@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+
+# NeoForge dev run / logs
+run/
+runs/
+logs/
+crash-reports/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+*.launch
+eclipse/
+
+# OS clutter
+.DS_Store
+Thumbs.db
