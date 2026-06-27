@@ -25,24 +25,6 @@ runtime recipe edits, so under EMI this mod is a no-op (it logs a warning rather
 
 ---
 
-## Design decisions (your two open questions, resolved)
-
-You flagged two ambiguities. Both became config toggles rather than hard forks, with defaults that
-match the lean of your spec:
-
-1. **Singleplayer vs multiplayer.** This is a **client-side-only** mod. Discovery is detected by
-   scanning your own inventory on the client, and hiding is done through JEI's client runtime. That
-   means it works in singleplayer **and** when you connect to a dedicated server (on 1.21.1 the
-   server syncs all recipes to your client), and **the server does not need the mod**. There is no
-   server-authoritative / shared-across-players discovery — if you want that later, it's a different
-   build with packets.
-2. **Per-save vs global discovery.** Config `discoveryScope`, default **`PER_SAVE`**. Switch to
-   `GLOBAL` for one shared set across all worlds on this client.
-
-If either default is wrong for you, change the config (below) — no code edits needed.
-
----
-
 ## Install (playing)
 
 1. Install **NeoForge for 1.21.1** and **JEI for 1.21.1** (JEI 19.x).
@@ -63,16 +45,6 @@ gradle wrapper        # only needed once, to generate the gradlew scripts + wrap
 > This zip does **not** include the `gradlew`/`gradlew.bat` launchers or `gradle-wrapper.jar`
 > (those are binaries). Run `gradle wrapper` once with a system Gradle (8.10+), or copy them from
 > the official NeoForge 1.21.1 MDK. `gradle/wrapper/gradle-wrapper.properties` is already set up.
-
-### Versions you may need to bump
-
-Open `gradle.properties` and check the entries marked `TODO(verify)`:
-
-- `neo_version` — any 1.21.1 NeoForge build (21.1.x).
-- `jei_version` — latest 1.21.1 JEI on https://maven.blamejared.com/mezz/jei/
-- `parchment_*` — optional; delete the `parchment {}` block in `build.gradle` if you drop these.
-
----
 
 ## Config
 
