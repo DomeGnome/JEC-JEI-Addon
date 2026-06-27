@@ -20,9 +20,6 @@ This mod targets **Minecraft 1.21.1 specifically**, and that's not arbitrary:
   require a server-side component (and a rewrite of the ingredient resolver, since the
   ingredient/recipe API was also reworked). See `RecipeInputResolver.java` and the TODOs.
 
-It also relies on **real JEI**. EMI's JEI-compat shim (TooManyRecipeViewers) intentionally throws on
-runtime recipe edits, so under EMI this mod is a no-op (it logs a warning rather than crashing).
-
 ---
 
 ## Install (playing)
