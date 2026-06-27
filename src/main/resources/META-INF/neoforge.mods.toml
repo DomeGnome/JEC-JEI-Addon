@@ -1,0 +1,39 @@
+modLoader = "javafml"
+loaderVersion = "${loader_version_range}"
+license = "${mod_license}"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "${mod_name}"
+authors = "${mod_authors}"
+description = '''
+${mod_description}
+'''
+# This is a CLIENT-side-only mod. It must never block joining a server, so we ignore version
+# matching during the client<->server handshake.
+displayTest = "IGNORE_ALL_VERSION"
+
+# --- Dependencies ---
+
+[[dependencies.${mod_id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neo_version_range}"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.${mod_id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "CLIENT"
+
+# JEI is required for this mod to do anything. If you'd rather make it soft, change type to "optional".
+[[dependencies.${mod_id}]]
+modId = "jei"
+type = "required"
+versionRange = "[19,)"
+ordering = "AFTER"
+side = "CLIENT"
