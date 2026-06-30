@@ -133,20 +133,4 @@ ClientDiscoveryHandler ──scan inventory──▶ DiscoveryState ──delta 
   state is rebuilt correctly each time. If JEI's runtime isn't up yet, discovery just accumulates and
   gets applied on the next build.
 
-## Known limitations / things to verify
 
-- **JEI method names**: `RecipeGate.java` has a header block listing every JEI runtime method it
-  calls. The lifecycle/runtime accessors are confirmed against JEI's 1.21.x source; the
-  `hideRecipes`/`unhideRecipes`/lookup signatures are correct for JEI 19.x but worth a 30-second
-  check against the exact `-api` jar you depend on. If anything differs, that one file is the only
-  place to fix.
-- **Custom modded categories**: recipes that don't use vanilla-style ingredients can't be introspected,
-  so they fall under `unresolvedRecipePolicy` (default: stay visible, to avoid permanently hiding
-  modded content you can't reason about). A stricter, fully-general approach would harvest inputs by
-  running each recipe through its category's layout builder with a capturing `IRecipeLayoutBuilder`;
-  that's a larger piece of work and intentionally left out of v1.
-- **`Recipe#getIngredients()`**: a few custom recipes implement `Recipe` but don't populate
-  ingredients; those are caught and treated as unresolved.
-- **Index build cost**: indexing happens once per JEI (re)load on the client thread. Fine for normal
-  packs; for enormous packs you may see a brief hitch on load.
-```
