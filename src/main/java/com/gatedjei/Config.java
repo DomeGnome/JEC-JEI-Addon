@@ -47,13 +47,12 @@ public final class Config {
 
         HIDE_UNDISCOVERED_ITEMS = b
                 .comment("If true, also remove undiscovered items from JEI's item list (not just their recipes).",
-                         "Default false: only recipes are gated; the item list is left alone.")
-                .define("hideUndiscoveredItems", false);
+                         "Default true: the item list starts empty and fills in as you discover items.")
+                .define("hideUndiscoveredItems", true);
 
         HIDE_UNDISCOVERED_FLUIDS = b
-                .comment("If true, hide undiscovered FLUIDS (water, lava, modded fluids) from JEI's fluid list,",
-                         "the same way hideUndiscoveredItems hides items. Without this, fluids always show because",
-                         "fluids are a separate JEI ingredient type from items.",
+                .comment("If true, hide undiscovered FLUIDS (water, lava, modded fluids) from JEI's fluid list.",
+                         "Fluids are a separate JEI ingredient type, so this is needed on top of hideUndiscoveredItems.",
                          "Fluids are discovered by wading in them or holding a bucket of them (see [discovery]).")
                 .define("hideUndiscoveredFluids", true);
 
@@ -61,9 +60,9 @@ public final class Config {
                 .comment("If true, items with NBT variants (enchanted books, potions, tipped arrows) are gated",
                          "per-variant instead of per-item. Discovering a Sharpness book reveals only the Sharpness",
                          "book (plus the plain book); discovering a Night Vision potion reveals only that potion.",
-                         "If false, discovering any one variant reveals all of them (simpler, the pre-1.0.5 behavior).",
+                         "If false, discovering any one variant reveals all of them.",
                          "Only affects JEI's item list; requires hideUndiscoveredItems = true to have any effect.")
-                .define("granularSubtypeDiscovery", false);
+                .define("granularSubtypeDiscovery", true);
 
         REVEAL_ALL = b
                 .comment("DEBUG: if true, nothing is hidden. Use to confirm JEI integration / disable gating fast.")
@@ -71,8 +70,9 @@ public final class Config {
 
         UNRESOLVED_POLICY = b
                 .comment("What to do with recipes whose inputs cannot be read (custom modded JEI categories that",
-                         "do not use vanilla-style ingredients). REVEAL keeps them visible; HIDE keeps them hidden.")
-                .defineEnum("unresolvedRecipePolicy", UnresolvedPolicy.REVEAL);
+                         "do not use vanilla-style ingredients). REVEAL keeps them visible; HIDE keeps them hidden.",
+                         "Default HIDE: unreadable recipes stay gated, consistent with everything else being hidden.")
+                .defineEnum("unresolvedRecipePolicy", UnresolvedPolicy.HIDE);
 
         b.pop();
         b.comment("Discovery tracking").push("discovery");
@@ -98,7 +98,8 @@ public final class Config {
         DISCOVER_BASE_CONTAINER = b
                 .comment("When you comprehend a 'filled' subtype item, also discover the empty/base item it's",
                          "built on — since you're literally holding both. Covers:",
-                         "  filled bucket -> bucket, enchanted book -> book, potion -> glass bottle, tipped arrow -> arrow.",
+                         "  filled bucket -> bucket, enchanted book -> book, potion -> glass bottle,",
+                         "  tipped arrow -> arrow, soup -> bowl.",
                          "Set false to learn only the filled item itself.")
                 .define("discoverBaseContainer", true);
 

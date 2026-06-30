@@ -1,0 +1,58 @@
+#JEI Gated Discovery settings
+[gating]
+	#If true, a recipe's OUTPUT item(s) must also be discovered before the recipe is shown.
+	#Default false: you can see a recipe as soon as you have all of its inputs.
+	requireOutputsDiscovered = false
+
+	#If true, also remove undiscovered items from JEI's item list (not just their recipes).
+	#Default true: the item list starts empty and fills in as you discover items.
+	hideUndiscoveredItems = true
+
+	#If true, hide undiscovered FLUIDS (water, lava, modded fluids) from JEI's fluid list.
+	#Fluids are a separate JEI ingredient type, so this is needed on top of hideUndiscoveredItems.
+	#Fluids are discovered by wading in them or holding a bucket of them (see [discovery]).
+	hideUndiscoveredFluids = true
+
+	#If true, items with NBT variants (enchanted books, potions, tipped arrows) are gated
+	#per-variant instead of per-item. Discovering a Sharpness book reveals only the Sharpness
+	#book (plus the plain book); discovering a Night Vision potion reveals only that potion.
+	#If false, discovering any one variant reveals all of them.
+	#Only affects JEI's item list; requires hideUndiscoveredItems = true to have any effect.
+	granularSubtypeDiscovery = true
+
+	#DEBUG: if true, nothing is hidden. Use to confirm JEI integration / disable gating fast.
+	revealAll = false
+
+	#What to do with recipes whose inputs cannot be read (custom modded JEI categories that
+	#do not use vanilla-style ingredients). REVEAL keeps them visible; HIDE keeps them hidden.
+	#Default HIDE: unreadable recipes stay gated, consistent with everything else being hidden.
+	#Allowed Values: REVEAL, HIDE
+	unresolvedRecipePolicy = "HIDE"
+
+#Discovery tracking
+[discovery]
+	#PER_SAVE: each save / server has its own discovery set (recommended, matches vanilla feel).
+	#GLOBAL: one discovery set shared across all worlds on this client.
+	#Allowed Values: PER_SAVE, GLOBAL
+	discoveryScope = "PER_SAVE"
+
+	#How often (in client ticks, 20 = 1s) to scan the inventory for newly touched items.
+	#Range: 1 ~ 200
+	scanIntervalTicks = 10
+
+	#Discover a fluid by standing in / wading through it (e.g. step into water to learn water).
+	discoverFluidsByWading = true
+
+	#Discover a fluid by holding a bucket (or other fluid container) of it
+	#(e.g. a lava bucket in your inventory learns lava).
+	discoverFluidsByBucket = true
+
+	#When you comprehend a 'filled' subtype item, also discover the empty/base item it's
+	#built on - since you're literally holding both. Covers:
+	#  filled bucket -> bucket, enchanted book -> book, potion -> glass bottle,
+	#  tipped arrow -> arrow, soup -> bowl.
+	#Set false to learn only the filled item itself.
+	discoverBaseContainer = true
+
+	#Log discovery/recipe-gating stats to the log (also available via /gatedjei stats).
+	logStats = false
