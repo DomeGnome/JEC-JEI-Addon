@@ -20,6 +20,27 @@ This mod targets **Minecraft 1.21.1 specifically**, and that's not arbitrary:
   require a server-side component (and a rewrite of the ingredient resolver, since the
   ingredient/recipe API was also reworked). See `RecipeInputResolver.java` and the TODOs.
 
+It also relies on **real JEI**. EMI's JEI-compat shim (TooManyRecipeViewers) intentionally throws on
+runtime recipe edits, so under EMI this mod is a no-op (it logs a warning rather than crashing).
+
+---
+
+## Design decisions (your two open questions, resolved)
+
+You flagged two ambiguities. Both became config toggles rather than hard forks, with defaults that
+match the lean of your spec:
+
+1. **Singleplayer vs multiplayer.** This is a **client-side-only** mod. Discovery is detected by
+   scanning your own inventory on the client, and hiding is done through JEI's client runtime. That
+   means it works in singleplayer **and** when you connect to a dedicated server (on 1.21.1 the
+   server syncs all recipes to your client), and **the server does not need the mod**. There is no
+   server-authoritative / shared-across-players discovery — if you want that later, it's a different
+   build with packets.
+2. **Per-save vs global discovery.** Config `discoveryScope`, default **`PER_SAVE`**. Switch to
+   `GLOBAL` for one shared set across all worlds on this client.
+
+If either default is wrong for you, change the config (below) — no code edits needed.
+
 ---
 
 ## Install (playing)
@@ -43,22 +64,39 @@ gradle wrapper        # only needed once, to generate the gradlew scripts + wrap
 > (those are binaries). Run `gradle wrapper` once with a system Gradle (8.10+), or copy them from
 > the official NeoForge 1.21.1 MDK. `gradle/wrapper/gradle-wrapper.properties` is already set up.
 
+### Versions you may need to bump
+
+Open `gradle.properties` and check the entries marked `TODO(verify)`:
+
+- `neo_version` — any 1.21.1 NeoForge build (21.1.x).
+- `jei_version` — latest 1.21.1 JEI on https://maven.blamejared.com/mezz/jei/
+- `parchment_*` — optional; delete the `parchment {}` block in `build.gradle` if you drop these.
+
+---
+
 ## Config
 
 `config/gatedjei-client.toml`:
 
+**Out of the box, the mod runs in full-gating mode:** both recipes *and* the item list start
+hidden and reveal as you discover items, item variants (enchantments, potions) are gated
+individually, and recipes the mod can't read are hidden rather than left showing. The toggles below
+let you loosen any of that — e.g. set `hideUndiscoveredItems = false` to gate only recipes and leave
+JEI's item list fully visible.
+
 | Key | Default | Meaning |
 |---|---|---|
 | `requireOutputsDiscovered` | `false` | Also require a recipe's **output** to be discovered before showing it. |
-| `hideUndiscoveredItems` | `false` | Also remove undiscovered items from JEI's **item list**, not just their recipes. |
+| `hideUndiscoveredItems` | `true` | Remove undiscovered items from JEI's **item list**, not just their recipes. Set `false` to gate recipes only. |
 | `hideUndiscoveredFluids` | `true` | Hide undiscovered **fluids** (water, lava, modded) from JEI's fluid list. Fluids are a separate JEI ingredient type from items. |
-| `granularSubtypeDiscovery` | `false` | Gate items with NBT variants (enchanted books, potions) **per variant** instead of per item. Discovering a Sharpness book reveals only that book (+ the plain book); a Night Vision potion reveals only that potion. Needs `hideUndiscoveredItems = true`. |
+| `granularSubtypeDiscovery` | `true` | Gate items with NBT variants (enchanted books, potions) **per variant** instead of per item. Discovering a Sharpness book reveals only that book (+ the plain book); a Night Vision potion reveals only that potion. Needs `hideUndiscoveredItems = true`. |
 | `revealAll` | `false` | Debug: hide nothing. Also toggleable live via `/gatedjei reveal`. |
-| `unresolvedRecipePolicy` | `REVEAL` | Recipes whose inputs can't be read (custom modded categories): `REVEAL` or `HIDE`. |
+| `unresolvedRecipePolicy` | `HIDE` | Recipes whose inputs can't be read (custom modded categories): `REVEAL` keeps them visible, `HIDE` gates them. |
 | `discoveryScope` | `PER_SAVE` | `PER_SAVE` or `GLOBAL`. |
 | `scanIntervalTicks` | `10` | How often (ticks) to scan inventory for newly touched items. |
 | `discoverFluidsByWading` | `true` | Learn a fluid by standing in / wading through it. |
-| `discoverFluidsByBucket` | `true` | Learn a fluid by holding a bucket of it (also teaches the contained fluid and the emptied container). |
+| `discoverFluidsByBucket` | `true` | Learn a fluid by holding a bucket of it (also teaches the contained fluid). |
+| `discoverBaseContainer` | `true` | When you comprehend a "filled" item, also discover the empty base it's built on: filled bucket → bucket, enchanted book → book, potion → glass bottle, tipped arrow → arrow, soup → bowl. Set false to learn only the filled item. |
 | `logStats` | `false` | Log indexing/gating stats. |
 
 ### Commands (client-side)
