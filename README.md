@@ -1,4 +1,8 @@
-# JEI Gated Discovery (NeoForge 1.21.1)
+# JEI Gated Discovery (Forge 1.20.1)
+
+> **This is the 1.20.1 / Forge backport branch.** The 1.21.1 / NeoForge version lives on `main`.
+> Behaviour, config keys, defaults and the on-disk discovery format are identical between the two;
+> only the platform APIs differ (see [Porting notes](#porting-notes-1211-neoforge--1201-forge)).
 
 Hides every JEI recipe on world load, then reveals each recipe the moment you've **discovered**
 (held in your inventory at least once) a matching item for **all** of its inputs. It mimics the
@@ -11,10 +15,10 @@ vanilla recipe book's "you must have touched the ingredients" feel, but for JEI'
 
 ## ⚠️ Read this first: the version matters
 
-This mod targets **Minecraft 1.21.1 specifically**, and that's not arbitrary:
+This branch targets **Minecraft 1.20.1 + Forge 47.x**, and the version ceiling is not arbitrary:
 
-- **1.21.1** is the last version where the full recipe set lives **client-side**. JEI can see every
-  recipe, so a client-side mod can hide/unhide them freely. ✅
+- **1.20.1 and 1.21.1** both keep the full recipe set **client-side**. JEI can see every recipe, so a
+  client-side mod can hide/unhide them freely. ✅
 - **1.21.2+** moved recipes **server-side** and only sends *unlocked* recipes to the client. A
   client-only approach like this one can't see the recipes it would need to gate. Porting up would
   require a server-side component (and a rewrite of the ingredient resolver, since the
@@ -32,7 +36,7 @@ match the lean of your spec:
 
 1. **Singleplayer vs multiplayer.** This is a **client-side-only** mod. Discovery is detected by
    scanning your own inventory on the client, and hiding is done through JEI's client runtime. That
-   means it works in singleplayer **and** when you connect to a dedicated server (on 1.21.1 the
+   means it works in singleplayer **and** when you connect to a dedicated server (on 1.20.1 the
    server syncs all recipes to your client), and **the server does not need the mod**. There is no
    server-authoritative / shared-across-players discovery — if you want that later, it's a different
    build with packets.
@@ -45,32 +49,41 @@ If either default is wrong for you, change the config (below) — no code edits 
 
 ## Install (playing)
 
-1. Install **NeoForge for 1.21.1** and **JEI for 1.21.1** (JEI 19.x).
+1. Install **Forge for 1.20.1** (47.x) and **JEI for 1.20.1** (JEI 15.x).
 2. Drop this mod's jar into `mods/`. Client only — you don't need it on a server.
 3. Launch. Open any inventory: JEI starts empty and fills in as you handle items.
 
+On Modrinth/CurseForge this is uploaded as **Client-side (required)**, loader **Forge**, game
+version **1.20.1**.
+
 ## Build (from source)
 
-Requires **JDK 21**.
+Requires **JDK 17** (1.20.1's Java version — ForgeGradle 6 does not run on 21). The Gradle wrapper is
+committed, so no system Gradle is needed:
 
 ```bash
 # from the project root
-gradle wrapper        # only needed once, to generate the gradlew scripts + wrapper jar
-./gradlew build       # jar lands in build/libs/
+./gradlew build       # jar lands in build/libs/gatedjei-1.20.1-<version>.jar
 ./gradlew runClient   # launches a dev client with JEI to test
 ```
 
-> This zip does **not** include the `gradlew`/`gradlew.bat` launchers or `gradle-wrapper.jar`
-> (those are binaries). Run `gradle wrapper` once with a system Gradle (8.10+), or copy them from
-> the official NeoForge 1.21.1 MDK. `gradle/wrapper/gradle-wrapper.properties` is already set up.
+Ignore the `-sources.jar` next to it; the plain `gatedjei-1.20.1-<version>.jar` is the one you ship.
 
-### Versions you may need to bump
+If your default JDK is not 17, point Gradle at one for the build:
 
-Open `gradle.properties` and check the entries marked `TODO(verify)`:
+```bash
+JAVA_HOME=/path/to/jdk-17 ./gradlew build
+```
 
-- `neo_version` — any 1.21.1 NeoForge build (21.1.x).
-- `jei_version` — latest 1.21.1 JEI on https://maven.blamejared.com/mezz/jei/
-- `parchment_*` — optional; delete the `parchment {}` block in `build.gradle` if you drop these.
+### Versions you may want to bump
+
+Everything is in `gradle.properties`:
+
+- `forge_version` — any 1.20.1 Forge build (47.x).
+- `jei_version` — latest 1.20.1 JEI on https://maven.blamejared.com/mezz/jei/ (the `15.x` line).
+- `mapping_channel` / `mapping_version` — Mojang official mappings by default. To use Parchment
+  instead, add the `org.parchmentmc.librarian.forgegradle` plugin and set the channel to
+  `parchment` with a 1.20.1 Parchment version.
 
 ---
 
@@ -122,7 +135,7 @@ ClientDiscoveryHandler ──scan inventory──▶ DiscoveryState ──delta 
   `<gamedir>/gatedjei/<key>.dat` as compressed NBT (item registry ids). Scanning (not pickup events)
   is what makes it work identically in SP and on dedicated servers from the client side.
 - **Recipe input model** (`recipe/RecipeInputResolver.java`): for each JEI recipe object, if it's a
-  vanilla-style `RecipeHolder`/`Recipe`, read `getIngredients()` and expand each `Ingredient` (tags
+  vanilla-style `Recipe`, read `getIngredients()` and expand each `Ingredient` (tags
   included) to a "any-of" set of items. A recipe is satisfied when **every** input group contains at
   least one discovered item. Tag slots (e.g. "any plank") are satisfied by discovering **any** match.
 - **JEI bridge** (`jei/RecipeGate.java`): on `onRuntimeAvailable`, enumerate all categories/recipes,
@@ -133,4 +146,37 @@ ClientDiscoveryHandler ──scan inventory──▶ DiscoveryState ──delta 
   state is rebuilt correctly each time. If JEI's runtime isn't up yet, discovery just accumulates and
   gets applied on the next build.
 
+---
 
+## Porting notes (1.21.1 NeoForge → 1.20.1 Forge)
+
+The gating engine is unchanged — same snapshot-based hiding, same reveal order, same config keys and
+defaults. Only the platform APIs moved:
+
+| Area | 1.21.1 (NeoForge) | 1.20.1 (Forge) |
+|---|---|---|
+| Java | 21 | 17 |
+| Build | ModDevGradle | ForgeGradle 6 (`net.minecraftforge.gradle`) |
+| Mod metadata | `META-INF/neoforge.mods.toml`, `type = "required"` | `META-INF/mods.toml`, `mandatory = true` |
+| `pack.mcmeta` | `pack_format 34` | `pack_format 15` |
+| Config spec | `ModConfigSpec` | `ForgeConfigSpec` (identical builder API) |
+| Config registration | `modContainer.registerConfig(...)` | `ModLoadingContext.get().registerConfig(...)` |
+| Event subscriber | `@EventBusSubscriber(bus = Bus.GAME)` | `@Mod.EventBusSubscriber(bus = Bus.FORGE)` |
+| Client tick | `ClientTickEvent.Post` | `TickEvent.ClientTickEvent`, filtered to `Phase.END` |
+| Fluid handler cap | `stack.getCapability(Capabilities.FluidHandler.ITEM)` | `stack.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).resolve()` |
+| JEI fluid type | `NeoForgeTypes.FLUID_STACK` (JEI 19.x) | `ForgeTypes.FLUID_STACK` (JEI 15.x) |
+| `ResourceLocation` | `fromNamespaceAndPath(ns, path)` | `new ResourceLocation(ns, path)` |
+| Recipe objects | `RecipeHolder<Recipe<?>>` | plain `Recipe<?>` (no `RecipeHolder` before 1.21) |
+| NBT IO | `NbtIo.readCompressed(Path, NbtAccounter)` | `NbtIo.readCompressed(File)` |
+| Item variants | Data Components (`STORED_ENCHANTMENTS`, `POTION_CONTENTS`) | NBT (`StoredEnchantments` tag, `PotionUtils`) |
+
+The last row is the only one with real behavioural risk, and it lives entirely in
+`discovery/SubtypeKeys.java`. Two things were deliberate there:
+
+- Stored enchantments are read via `EnchantedBookItem.getEnchantments(stack)` (the
+  `StoredEnchantments` tag), **not** `EnchantmentHelper.getEnchantments(stack)` — the latter also
+  reads the regular `Enchantments` tag, which would make every enchanted tool a "subtype variant"
+  and diverge from the 1.21.1 behaviour.
+- The emitted key strings keep the exact 1.21.1 format (`<id>#ench:<id>=<lvl>,...` and
+  `<id>#potion:<id>|<effect>:<dur>:<amp>,...`, both sorted), so `<gamedir>/gatedjei/<key>.dat`
+  discovery files are interchangeable between the 1.20.1 and 1.21.1 builds.

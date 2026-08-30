@@ -2,10 +2,9 @@ package com.gatedjei;
 
 import com.gatedjei.discovery.DiscoveryState;
 import com.gatedjei.jei.RecipeGate;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
+import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,19 +19,28 @@ import org.slf4j.LoggerFactory;
  *   <li>Discovery is detected by scanning the local player's inventory on the client.</li>
  *   <li>Hiding/unhiding is done through JEI's client-side runtime recipe manager.</li>
  *   <li>It therefore works in singleplayer AND when connected to a dedicated server, because on
- *       Minecraft 1.21.1 the full recipe set is synced to the client (this stops being true on
+ *       Minecraft 1.20.1 the full recipe set is synced to the client (this stops being true on
  *       1.21.2+, where recipes live server-side — see README).</li>
  *   <li>The server does not need this mod installed.</li>
  * </ul>
+ *
+ * <p><b>1.20.1 / Forge port.</b> Forge constructs the mod class with no arguments, so the config is
+ * registered through {@link ModLoadingContext} rather than through a constructor-injected mod
+ * container (the NeoForge 1.21 style). Event handlers all live on the game bus and register
+ * themselves via {@code @Mod.EventBusSubscriber}, so the mod event bus is not needed here.
  */
 @Mod(GatedJei.MODID)
 public final class GatedJei {
     public static final String MODID = "gatedjei";
     public static final Logger LOGGER = LoggerFactory.getLogger("GatedJei");
 
-    public GatedJei(IEventBus modEventBus, ModContainer modContainer) {
+    public GatedJei() {
         // Client-type config (this mod has no server-side behaviour).
-        modContainer.registerConfig(ModConfig.Type.CLIENT, Config.SPEC, MODID + "-client.toml");
+        // ModLoadingContext.get() is flagged deprecated-for-removal by the newest Forge 47.x builds,
+        // which prefer constructor injection — but that only exists from 47.1 onwards, and this mod
+        // supports the whole 47.x line, so the static accessor stays. It is not going anywhere on
+        // 1.20.1; the deprecation is a forward-port nudge.
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, Config.SPEC, MODID + "-client.toml");
 
         // The single RecipeGate instance is the bridge between discovery and JEI.
         // It listens for newly discovered items and unhides the recipes they unlock.

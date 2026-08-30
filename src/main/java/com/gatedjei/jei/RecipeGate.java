@@ -6,17 +6,17 @@ import com.gatedjei.discovery.DiscoveryState;
 import com.gatedjei.discovery.SubtypeKeys;
 import com.gatedjei.recipe.RecipeInputResolver;
 import mezz.jei.api.constants.VanillaTypes;
+import mezz.jei.api.forge.ForgeTypes;
+import mezz.jei.api.recipe.IRecipeManager;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
-import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.runtime.IIngredientManager;
 import mezz.jei.api.runtime.IJeiRuntime;
-import mezz.jei.api.recipe.IRecipeManager;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.FluidType;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,11 +29,9 @@ import java.util.Set;
 /**
  * The bridge between discovery state and JEI's runtime.
  *
- * <p>========================= JEI API SURFACE USED (please verify) =========================
- * Confirmed against the JEI 1.21.x source (commit d4ea796e) for the runtime entry points:
- *   - IJeiRuntime#getRecipeManager(), #getIngredientManager()                      [confirmed]
- * The following recipe-manager calls are correct for JEI 19.x but were not line-checked for
- * your exact build, so verify the signatures against the jei-1.21.1-*-api jar you depend on:
+ * <p>========================= JEI API SURFACE USED =========================
+ * Verified against the JEI 15.x API jars for 1.20.1 (jei-1.20.1-common-api / -forge-api):
+ *   - IJeiRuntime#getRecipeManager(), #getIngredientManager()
  *   - IRecipeManager#createRecipeCategoryLookup().includeHidden().get()  -> Stream<IRecipeCategory<?>>
  *   - IRecipeCategory#getRecipeType()                                    -> RecipeType<T>
  *   - IRecipeManager#createRecipeLookup(RecipeType<T>).includeHidden().get() -> Stream<T>
@@ -41,7 +39,9 @@ import java.util.Set;
  *   - IRecipeManager#unhideRecipes(RecipeType<T>, Collection<T>)
  *   - IIngredientManager#removeIngredientsAtRuntime(IIngredientType<V>, Collection<V>)
  *   - IIngredientManager#addIngredientsAtRuntime(IIngredientType<V>, Collection<V>)
- * If a name differs, this is the only file you should need to touch.
+ * The whole surface is unchanged from the JEI 19.x (1.21.1) build this was ported from; only the
+ * fluid ingredient type moved (mezz.jei.api.forge.ForgeTypes#FLUID_STACK instead of NeoForgeTypes),
+ * and it carries Forge's net.minecraftforge.fluids.FluidStack.
  *
  * NOTE: runtime hide/unhide is a real-JEI feature. EMI's JEI-compat layer (TooManyRecipeViewers)
  * deliberately throws IllegalStateException for runtime registry edits — so this mod is a no-op /
@@ -318,7 +318,6 @@ public final class RecipeGate {
 
     private void applyItemListHiding() {
         // Hide every item in the registry that hasn't been discovered.
-        // TODO(verify): removeIngredientsAtRuntime signature on your JEI build.
         if (runtime == null) {
             return;
         }
@@ -386,7 +385,6 @@ public final class RecipeGate {
             return;
         }
         try {
-            // TODO(verify): addIngredientsAtRuntime signature on your JEI build.
             im.addIngredientsAtRuntime(VanillaTypes.ITEM_STACK, add);
         } catch (Throwable t) {
             GatedJei.LOGGER.warn("re-adding discovered items to list failed: {}", t.toString());
@@ -428,12 +426,10 @@ public final class RecipeGate {
         IIngredientManager im = runtime.getIngredientManager();
         List<FluidStack> add = new ArrayList<>();
         for (Fluid fluid : newly) {
-            // TODO(verify): FluidStack(Fluid, int) constructor on your build; if it needs a Holder,
-            // use new FluidStack(fluid.builtInRegistryHolder(), FluidType.BUCKET_VOLUME).
             add.add(new FluidStack(fluid, FluidType.BUCKET_VOLUME));
         }
         try {
-            im.addIngredientsAtRuntime(NeoForgeTypes.FLUID_STACK, add);
+            im.addIngredientsAtRuntime(ForgeTypes.FLUID_STACK, add);
         } catch (Throwable t) {
             GatedJei.LOGGER.warn("re-adding discovered fluids to list failed: {}", t.toString());
         }
@@ -447,9 +443,8 @@ public final class RecipeGate {
         DiscoveryState state = DiscoveryState.get();
         // Capture the full fluid list once, then hide from the snapshot (not getAllIngredients) so a
         // fluid that was discovered and re-added at runtime still gets re-hidden on reset.
-        // TODO(verify): NeoForgeTypes.FLUID_STACK is JEI's NeoForge fluid ingredient type.
         if (fluidSnapshot.isEmpty()) {
-            for (FluidStack stack : im.getAllIngredients(NeoForgeTypes.FLUID_STACK)) {
+            for (FluidStack stack : im.getAllIngredients(ForgeTypes.FLUID_STACK)) {
                 fluidSnapshot.add(stack);
             }
         }
@@ -461,7 +456,7 @@ public final class RecipeGate {
         }
         if (!hide.isEmpty()) {
             try {
-                im.removeIngredientsAtRuntime(NeoForgeTypes.FLUID_STACK, hide);
+                im.removeIngredientsAtRuntime(ForgeTypes.FLUID_STACK, hide);
             } catch (Throwable t) {
                 GatedJei.LOGGER.warn("hideUndiscoveredFluids failed: {}", t.toString());
             }

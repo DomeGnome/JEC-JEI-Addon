@@ -7,10 +7,10 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
-import net.neoforged.neoforge.fluids.capability.IFluidHandlerItem;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.capability.IFluidHandlerItem;
 
 import java.util.Set;
 
@@ -24,6 +24,10 @@ import java.util.Set;
  * </ul>
  * Variant keys are always emitted (cheap); the caller decides whether to act on them based on the
  * granular-discovery config, so switching the toggle on later still reflects what you've handled.
+ *
+ * <p><b>1.20.1 port.</b> Capabilities are the LazyOptional kind here, so the fluid handler is
+ * fetched with {@code getCapability(...).resolve()} instead of NeoForge's nullable
+ * {@code getCapability(Capabilities.FluidHandler.ITEM)}.
  */
 public final class ItemComprehension {
     private ItemComprehension() {}
@@ -43,10 +47,11 @@ public final class ItemComprehension {
         }
         addItemAndVariant(stack, outItems, outVariants);
 
-        IFluidHandlerItem handler;
+        // Work on a copy: draining below mutates the handler's container stack.
         ItemStack copy = stack.copy();
+        IFluidHandlerItem handler;
         try {
-            handler = copy.getCapability(Capabilities.FluidHandler.ITEM);
+            handler = copy.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).resolve().orElse(null);
         } catch (Throwable t) {
             handler = null;
         }

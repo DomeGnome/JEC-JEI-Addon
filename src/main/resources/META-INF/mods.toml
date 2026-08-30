@@ -17,23 +17,23 @@ displayTest = "IGNORE_ALL_VERSION"
 # --- Dependencies ---
 
 [[dependencies.${mod_id}]]
-modId = "neoforge"
-type = "required"
-versionRange = "${neo_version_range}"
-ordering = "NONE"
-side = "CLIENT"
+    modId = "forge"
+    mandatory = true
+    versionRange = "${forge_version_range}"
+    ordering = "NONE"
+    side = "CLIENT"
 
 [[dependencies.${mod_id}]]
-modId = "minecraft"
-type = "required"
-versionRange = "${minecraft_version_range}"
-ordering = "NONE"
-side = "CLIENT"
+    modId = "minecraft"
+    mandatory = true
+    versionRange = "${minecraft_version_range}"
+    ordering = "NONE"
+    side = "CLIENT"
 
-# JEI is required for this mod to do anything. If you'd rather make it soft, change type to "optional".
+# JEI is required for this mod to do anything. If you'd rather make it soft, set mandatory = false.
 [[dependencies.${mod_id}]]
-modId = "jei"
-type = "required"
-versionRange = "[19,)"
-ordering = "AFTER"
-side = "CLIENT"
+    modId = "jei"
+    mandatory = true
+    versionRange = "${jei_version_range}"
+    ordering = "AFTER"
+    side = "CLIENT"

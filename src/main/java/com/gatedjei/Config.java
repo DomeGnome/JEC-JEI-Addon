@@ -1,6 +1,6 @@
 package com.gatedjei;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
 
 /**
  * Client config. All of the toggles requested in the spec live here.
@@ -20,23 +20,23 @@ public final class Config {
         HIDE
     }
 
-    public static final ModConfigSpec SPEC;
+    public static final ForgeConfigSpec SPEC;
 
-    public static final ModConfigSpec.BooleanValue REQUIRE_OUTPUTS_DISCOVERED;
-    public static final ModConfigSpec.BooleanValue HIDE_UNDISCOVERED_ITEMS;
-    public static final ModConfigSpec.BooleanValue HIDE_UNDISCOVERED_FLUIDS;
-    public static final ModConfigSpec.BooleanValue GRANULAR_SUBTYPE_DISCOVERY;
-    public static final ModConfigSpec.BooleanValue REVEAL_ALL;
-    public static final ModConfigSpec.EnumValue<UnresolvedPolicy> UNRESOLVED_POLICY;
-    public static final ModConfigSpec.EnumValue<DiscoveryScope> DISCOVERY_SCOPE;
-    public static final ModConfigSpec.IntValue SCAN_INTERVAL_TICKS;
-    public static final ModConfigSpec.BooleanValue DISCOVER_FLUIDS_BY_WADING;
-    public static final ModConfigSpec.BooleanValue DISCOVER_FLUIDS_BY_BUCKET;
-    public static final ModConfigSpec.BooleanValue DISCOVER_BASE_CONTAINER;
-    public static final ModConfigSpec.BooleanValue LOG_STATS;
+    public static final ForgeConfigSpec.BooleanValue REQUIRE_OUTPUTS_DISCOVERED;
+    public static final ForgeConfigSpec.BooleanValue HIDE_UNDISCOVERED_ITEMS;
+    public static final ForgeConfigSpec.BooleanValue HIDE_UNDISCOVERED_FLUIDS;
+    public static final ForgeConfigSpec.BooleanValue GRANULAR_SUBTYPE_DISCOVERY;
+    public static final ForgeConfigSpec.BooleanValue REVEAL_ALL;
+    public static final ForgeConfigSpec.EnumValue<UnresolvedPolicy> UNRESOLVED_POLICY;
+    public static final ForgeConfigSpec.EnumValue<DiscoveryScope> DISCOVERY_SCOPE;
+    public static final ForgeConfigSpec.IntValue SCAN_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.BooleanValue DISCOVER_FLUIDS_BY_WADING;
+    public static final ForgeConfigSpec.BooleanValue DISCOVER_FLUIDS_BY_BUCKET;
+    public static final ForgeConfigSpec.BooleanValue DISCOVER_BASE_CONTAINER;
+    public static final ForgeConfigSpec.BooleanValue LOG_STATS;
 
     static {
-        ModConfigSpec.Builder b = new ModConfigSpec.Builder();
+        ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
 
         b.comment("JEI Gated Discovery settings").push("gating");
 

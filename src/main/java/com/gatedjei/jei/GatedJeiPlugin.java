@@ -15,7 +15,11 @@ import net.minecraft.resources.ResourceLocation;
  */
 @JeiPlugin
 public final class GatedJeiPlugin implements IModPlugin {
-    private static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath(GatedJei.MODID, "gated_discovery");
+    // 1.20.1 uses the public ResourceLocation constructor. Forge 47.4+ back-ported the 1.21
+    // fromNamespaceAndPath factory and marked the constructor deprecated-for-removal, hence the
+    // build warning — but the factory is missing on earlier 47.x builds, so the constructor is the
+    // form that works across the whole supported Forge range.
+    private static final ResourceLocation UID = new ResourceLocation(GatedJei.MODID, "gated_discovery");
 
     @Override
     public ResourceLocation getPluginUid() {
@@ -35,8 +39,6 @@ public final class GatedJeiPlugin implements IModPlugin {
 
     @Override
     public void onRuntimeUnavailable() {
-        // TODO(verify): onRuntimeUnavailable exists on IModPlugin in JEI 19.x. If your build lacks it,
-        // just delete this override — rebuild-on-onRuntimeAvailable still keeps things correct.
         RecipeGate.INSTANCE.onRuntimeUnavailable();
     }
 }

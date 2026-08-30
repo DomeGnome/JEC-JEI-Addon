@@ -4,14 +4,13 @@ import com.gatedjei.GatedJei;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
-import net.neoforged.fml.loading.FMLPaths;
+import net.minecraftforge.fml.loading.FMLPaths;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,6 +21,11 @@ import java.util.Set;
 /**
  * Persists discovered items, fluids, and subtype-variant keys to {@code <gamedir>/gatedjei/<key>.dat}.
  * Items/fluids stored by registry id; variants stored as their {@link SubtypeKeys} strings.
+ *
+ * <p><b>1.20.1 note.</b> {@code NbtIo} here is the pre-1.20.5 File-based API
+ * ({@code readCompressed(File)} / {@code writeCompressed(CompoundTag, File)}); there is no
+ * {@code NbtAccounter} parameter. The on-disk format is unchanged, so discovery files are
+ * interchangeable with the 1.21.1 build.
  */
 public final class DiscoveryStorage {
     private static final String FOLDER = "gatedjei";
@@ -50,7 +54,7 @@ public final class DiscoveryStorage {
             return new Loaded(items, fluids, variants);
         }
         try {
-            CompoundTag root = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
+            CompoundTag root = NbtIo.readCompressed(file.toFile());
 
             ListTag itemList = root.getList(KEY_ITEMS, Tag.TAG_STRING);
             for (int i = 0; i < itemList.size(); i++) {
@@ -113,7 +117,7 @@ public final class DiscoveryStorage {
             }
             root.put(KEY_VARIANTS, variantList);
 
-            NbtIo.writeCompressed(root, fileFor(key));
+            NbtIo.writeCompressed(root, fileFor(key).toFile());
         } catch (IOException | RuntimeException e) {
             GatedJei.LOGGER.warn("Failed to write discovery file for key {}: {}", key, e.toString());
         }

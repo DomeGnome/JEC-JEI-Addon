@@ -6,7 +6,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -17,11 +16,11 @@ import java.util.Set;
 /**
  * Turns a JEI recipe object into the item sets we need for gating.
  *
- * <p><b>1.21.1 specific.</b> Here, recipe objects for the vanilla JEI categories are
- * {@link RecipeHolder}s wrapping a {@link Recipe}, and {@code Recipe#getIngredients()} returns
- * {@code NonNullList<Ingredient>} whose {@code Ingredient#getItems()} expands tags to concrete
- * {@code ItemStack[]}. This is exactly what we want, and it covers vanilla plus most modded
- * recipes that use the datapack recipe system.
+ * <p><b>1.20.1 specific.</b> Here, recipe objects for the vanilla JEI categories are plain
+ * {@link Recipe} instances — {@code RecipeHolder} only exists from 1.21 onwards — and
+ * {@code Recipe#getIngredients()} returns {@code NonNullList<Ingredient>} whose
+ * {@code Ingredient#getItems()} expands tags to concrete {@code ItemStack[]}. This is exactly what
+ * we want, and it covers vanilla plus most modded recipes that use the datapack recipe system.
  *
  * <p>TODO(1.21.2+): the ingredient/recipe API was reworked (holder-based ingredients, SlotDisplay),
  * and recipes moved server-side, so this resolver must be rewritten for those versions.
@@ -78,9 +77,6 @@ public final class RecipeInputResolver {
     }
 
     private static Recipe<?> asRecipe(Object obj) {
-        if (obj instanceof RecipeHolder<?> holder) {
-            return holder.value();
-        }
         if (obj instanceof Recipe<?> r) {
             return r;
         }

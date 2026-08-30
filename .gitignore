@@ -2,7 +2,7 @@
 .gradle/
 build/
 
-# NeoForge dev run / logs
+# Forge dev run / logs
 run/
 runs/
 logs/

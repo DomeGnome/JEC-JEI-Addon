@@ -1,19 +1,42 @@
 plugins {
+    id 'eclipse'
+    id 'idea'
     id 'java'
-    // ModDevGradle (MDG). This is the toolchain the modern NeoForge 1.21.1 MDK uses.
-    // TODO(verify): latest 2.x at https://github.com/neoforged/ModDevGradle / plugin portal.
-    id 'net.neoforged.moddev' version '2.0.78'
+    // ForgeGradle 6 is the toolchain the Forge 1.20.1 MDK uses.
+    // NOTE: the Gradle daemon itself must run on Java 17 for ForgeGradle 6.
+    id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
 }
 
 version = project.mod_version
 group = project.mod_group
 
 base {
-    archivesName = project.mod_id
+    // Keeps the 1.20.1 jar from colliding with the 1.21.1 one: gatedjei-1.20.1-<version>.jar
+    archivesName = "${project.mod_id}-${project.minecraft_version}"
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
+}
+
+minecraft {
+    mappings channel: project.mapping_channel, version: project.mapping_version
+
+    // No access transformers are needed by this mod.
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', ''
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                "${project.mod_id}" {
+                    source sourceSets.main
+                }
+            }
+        }
+        // This is a client-side mod, so no server run config is provided.
+    }
 }
 
 repositories {
@@ -30,57 +53,52 @@ repositories {
     }
 }
 
-neoForge {
-    version = project.neo_version
-
-    // Remove this block if you deleted the parchment_* properties.
-    parchment {
-        minecraftVersion = project.parchment_minecraft_version
-        mappingsVersion = project.parchment_mappings_version
-    }
-
-    runs {
-        client {
-            client()
-            // This is a client-side mod; a server run isn't needed, but you can add one for testing.
-        }
-    }
-
-    mods {
-        "${project.mod_id}" {
-            sourceSet sourceSets.main
-        }
-    }
-}
-
 dependencies {
+    minecraft "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
+
     // Compile against the JEI API only; the full JEI jar is pulled in at runtime.
-    compileOnly "mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}"
-    compileOnly "mezz.jei:jei-${project.minecraft_version}-neoforge-api:${project.jei_version}"
+    compileOnly fg.deobf("mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}")
+    compileOnly fg.deobf("mezz.jei:jei-${project.minecraft_version}-forge-api:${project.jei_version}")
     // Use the full JEI build in the dev client so you can actually see the gating work:
-    runtimeOnly "mezz.jei:jei-${project.minecraft_version}-neoforge:${project.jei_version}"
+    runtimeOnly fg.deobf("mezz.jei:jei-${project.minecraft_version}-forge:${project.jei_version}")
 }
 
-// Interpolate gradle.properties values into neoforge.mods.toml at build time.
+// Interpolate gradle.properties values into mods.toml at build time.
 tasks.named('processResources', ProcessResources).configure {
     def replace = [
-        mod_id              : project.mod_id,
-        mod_name            : project.mod_name,
-        mod_version         : project.mod_version,
-        mod_authors         : project.mod_authors,
-        mod_license         : project.mod_license,
-        mod_description     : project.mod_description,
+        mod_id                 : project.mod_id,
+        mod_name               : project.mod_name,
+        mod_version            : project.mod_version,
+        mod_authors            : project.mod_authors,
+        mod_license            : project.mod_license,
+        mod_description        : project.mod_description,
         minecraft_version_range: project.minecraft_version_range,
-        neo_version_range   : project.neo_version_range,
-        loader_version_range: project.loader_version_range,
+        forge_version_range    : project.forge_version_range,
+        loader_version_range   : project.loader_version_range,
+        jei_version_range      : project.jei_version_range,
     ]
     inputs.properties replace
-    filesMatching('META-INF/neoforge.mods.toml') {
+    filesMatching('META-INF/mods.toml') {
         expand replace
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.release = 21
+    options.release = 17
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+            'Specification-Title'     : project.mod_id,
+            'Specification-Vendor'    : project.mod_authors,
+            'Specification-Version'   : '1',
+            'Implementation-Title'    : project.name,
+            'Implementation-Version'  : project.version,
+            'Implementation-Vendor'   : project.mod_authors,
+        ])
+    }
+    // ForgeGradle needs the jar reobfuscated to SRG names for production use.
+    finalizedBy 'reobfJar'
 }

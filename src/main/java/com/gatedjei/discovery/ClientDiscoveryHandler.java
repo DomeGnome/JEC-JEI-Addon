@@ -13,11 +13,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -35,8 +35,12 @@ import java.util.Set;
  *
  * <p>We scan instead of listening to pickup events on purpose — pickup events fire server-side,
  * but scanning works the same in singleplayer and on dedicated servers from the client's view.
+ *
+ * <p><b>1.20.1 port.</b> Forge has a single {@code TickEvent.ClientTickEvent} fired at both phases
+ * rather than NeoForge's {@code ClientTickEvent.Post}, so the END phase is filtered explicitly to
+ * keep the "once per tick, after the tick" behaviour.
  */
-@EventBusSubscriber(modid = GatedJei.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@Mod.EventBusSubscriber(modid = GatedJei.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class ClientDiscoveryHandler {
     private static int tickCounter = 0;
     private static int saveCounter = 0;
@@ -59,7 +63,10 @@ public final class ClientDiscoveryHandler {
     }
 
     @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return; // Forge fires START and END; only count the tick once.
+        }
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null) {
