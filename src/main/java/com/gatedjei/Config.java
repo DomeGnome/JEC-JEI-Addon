@@ -13,6 +13,15 @@ public final class Config {
         GLOBAL
     }
 
+    public enum SpellScrollDiscovery {
+        /** Scrolls are gated per item, exactly as they were before scroll support existed. */
+        OFF,
+        /** One key per spell: touching any Fireball scroll reveals every Fireball scroll. */
+        PER_SPELL,
+        /** One key per spell AND level: a Fireball IV scroll reveals only Fireball IV. */
+        PER_SPELL_AND_LEVEL
+    }
+
     public enum UnresolvedPolicy {
         /** Recipes whose inputs we cannot read (custom modded categories) stay visible. */
         REVEAL,
@@ -27,6 +36,7 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue HIDE_UNDISCOVERED_FLUIDS;
     public static final ModConfigSpec.BooleanValue GRANULAR_SUBTYPE_DISCOVERY;
     public static final ModConfigSpec.BooleanValue REVEAL_ALL;
+    public static final ModConfigSpec.EnumValue<SpellScrollDiscovery> IRONS_SPELL_SCROLL_DISCOVERY;
     public static final ModConfigSpec.EnumValue<UnresolvedPolicy> UNRESOLVED_POLICY;
     public static final ModConfigSpec.EnumValue<DiscoveryScope> DISCOVERY_SCOPE;
     public static final ModConfigSpec.IntValue SCAN_INTERVAL_TICKS;
@@ -63,6 +73,22 @@ public final class Config {
                          "If false, discovering any one variant reveals all of them.",
                          "Only affects JEI's item list; requires hideUndiscoveredItems = true to have any effect.")
                 .define("granularSubtypeDiscovery", true);
+
+        IRONS_SPELL_SCROLL_DISCOVERY = b
+                .comment("Soft compat with Iron's Spells 'n Spellbooks: how finely spell scrolls",
+                         "(irons_spellbooks:scroll) are gated. Iron's gives JEI one scroll entry per spell",
+                         "PER LEVEL, so this decides what showing up means when you touch one.",
+                         "  PER_SPELL_AND_LEVEL: a Fireball IV scroll reveals only Fireball IV (default;",
+                         "                       the same strictness as an enchanted book of a given level).",
+                         "  PER_SPELL:           a Fireball IV scroll reveals every Fireball scroll, all levels.",
+                         "  OFF:                 scrolls are gated per item again - touching any one scroll",
+                         "                       reveals the whole spell catalogue.",
+                         "Both keys are always recorded, so switching this on an existing save takes effect",
+                         "retroactively. Only affects Iron's scrolls; other spell-carrying items (spell books,",
+                         "magic swords, imbued armor) are gated per item because Iron's does not give JEI",
+                         "per-variant entries for them. Inert if Iron's isn't installed.",
+                         "Requires granularSubtypeDiscovery = true and hideUndiscoveredItems = true.")
+                .defineEnum("ironsSpellScrollDiscovery", SpellScrollDiscovery.PER_SPELL_AND_LEVEL);
 
         REVEAL_ALL = b
                 .comment("DEBUG: if true, nothing is hidden. Use to confirm JEI integration / disable gating fast.")

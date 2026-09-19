@@ -18,7 +18,7 @@ import java.util.Set;
  * Turns one {@link ItemStack} into everything it "teaches":
  * <ul>
  *   <li>the item itself;</li>
- *   <li>its subtype-variant key, if any (enchanted book / potion) — used in granular mode;</li>
+ *   <li>its subtype-variant keys, if any (enchanted book / potion / spell scroll) — granular mode;</li>
  *   <li>the plain book, if it's an enchanted book;</li>
  *   <li>any fluid it contains and the emptied container (water bucket -> water + bucket).</li>
  * </ul>
@@ -86,7 +86,9 @@ public final class ItemComprehension {
             outItems.add(item);
         }
         if (SubtypeKeys.isSubtypeVariant(stack)) {
-            outVariants.add(SubtypeKeys.variantKey(stack));
+            // Every key worth recording, not just the one the current config looks up — see
+            // SubtypeKeys.variantKeys(). Cheap, and it keeps a config flip from orphaning finds.
+            outVariants.addAll(SubtypeKeys.variantKeys(stack));
         }
         // Holding a filled subtype item means you also hold the empty base it's built on.
         if (Config.DISCOVER_BASE_CONTAINER.get()) {

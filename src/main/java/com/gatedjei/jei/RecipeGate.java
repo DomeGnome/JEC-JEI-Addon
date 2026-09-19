@@ -76,8 +76,10 @@ public final class RecipeGate {
     // Needed because items like enchanted books / potions appear as many NBT variants under one Item;
     // on discovery we must re-add ALL of them, not just a blank new ItemStack(item).
     private final Map<Item, List<ItemStack>> itemVariants = new HashMap<>();
-    // For granular mode: subtype-variant key -> its JEI list stack, so we can re-add a single variant.
-    private final Map<String, ItemStack> variantByKey = new HashMap<>();
+    // For granular mode: subtype-variant key -> the JEI list stacks it covers, so we can re-add a
+    // single variant. A key can map to MORE than one stack: with ironsSpellScrollDiscovery =
+    // PER_SPELL, every level of a spell shares one key and all of them must come back together.
+    private final Map<String, List<ItemStack>> variantByKey = new HashMap<>();
     // Complete fluid list captured before any removal, so reset can re-hide reliably (same reason as items).
     private final List<FluidStack> fluidSnapshot = new ArrayList<>();
 
@@ -333,8 +335,17 @@ public final class RecipeGate {
         if (itemVariants.isEmpty()) {
             for (ItemStack stack : im.getAllIngredients(VanillaTypes.ITEM_STACK)) {
                 itemVariants.computeIfAbsent(stack.getItem(), k -> new ArrayList<>()).add(stack);
+            }
+        }
+
+        // Variant keys are config-dependent, so rebuild this index from the cached snapshot on
+        // every full apply — otherwise a config change wouldn't be picked up until JEI restarted.
+        variantByKey.clear();
+        for (List<ItemStack> variants : itemVariants.values()) {
+            for (ItemStack stack : variants) {
                 if (SubtypeKeys.isSubtypeVariant(stack)) {
-                    variantByKey.putIfAbsent(SubtypeKeys.variantKey(stack), stack);
+                    variantByKey.computeIfAbsent(SubtypeKeys.variantKey(stack), k -> new ArrayList<>())
+                            .add(stack);
                 }
             }
         }
@@ -403,9 +414,9 @@ public final class RecipeGate {
         IIngredientManager im = runtime.getIngredientManager();
         List<ItemStack> add = new ArrayList<>();
         for (String key : newlyKeys) {
-            ItemStack v = variantByKey.get(key);
-            if (v != null) {
-                add.add(v);
+            List<ItemStack> stacks = variantByKey.get(key);
+            if (stacks != null) {
+                add.addAll(stacks);
             }
         }
         if (add.isEmpty()) {

@@ -20,6 +20,22 @@
 	#Only affects JEI's item list; requires hideUndiscoveredItems = true to have any effect.
 	granularSubtypeDiscovery = true
 
+	#Soft compat with Iron's Spells 'n Spellbooks: how finely spell scrolls
+	#(irons_spellbooks:scroll) are gated. Iron's gives JEI one scroll entry per spell
+	#PER LEVEL, so this decides what showing up means when you touch one.
+	#  PER_SPELL_AND_LEVEL: a Fireball IV scroll reveals only Fireball IV (default;
+	#                       the same strictness as an enchanted book of a given level).
+	#  PER_SPELL:           a Fireball IV scroll reveals every Fireball scroll, all levels.
+	#  OFF:                 scrolls are gated per item again - touching any one scroll
+	#                       reveals the whole spell catalogue.
+	#Both keys are always recorded, so switching this on an existing save takes effect
+	#retroactively. Only affects Iron's scrolls; other spell-carrying items (spell books,
+	#magic swords, imbued armor) are gated per item because Iron's does not give JEI
+	#per-variant entries for them. Inert if Iron's isn't installed.
+	#Requires granularSubtypeDiscovery = true and hideUndiscoveredItems = true.
+	#Allowed Values: OFF, PER_SPELL, PER_SPELL_AND_LEVEL
+	ironsSpellScrollDiscovery = "PER_SPELL_AND_LEVEL"
+
 	#DEBUG: if true, nothing is hidden. Use to confirm JEI integration / disable gating fast.
 	revealAll = false
 

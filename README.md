@@ -90,6 +90,7 @@ JEI's item list fully visible.
 | `hideUndiscoveredItems` | `true` | Remove undiscovered items from JEI's **item list**, not just their recipes. Set `false` to gate recipes only. |
 | `hideUndiscoveredFluids` | `true` | Hide undiscovered **fluids** (water, lava, modded) from JEI's fluid list. Fluids are a separate JEI ingredient type from items. |
 | `granularSubtypeDiscovery` | `true` | Gate items with NBT variants (enchanted books, potions) **per variant** instead of per item. Discovering a Sharpness book reveals only that book (+ the plain book); a Night Vision potion reveals only that potion. Needs `hideUndiscoveredItems = true`. |
+| `ironsSpellScrollDiscovery` | `PER_SPELL_AND_LEVEL` | Iron's Spells 'n Spellbooks scrolls (see [Mod compatibility](#mod-compatibility)). `PER_SPELL_AND_LEVEL` reveals only the exact scroll you touched (Fireball IV reveals Fireball IV); `PER_SPELL` reveals every level of that spell; `OFF` gates scrolls per item, so any one scroll reveals them all. Needs `granularSubtypeDiscovery = true`. |
 | `revealAll` | `false` | Debug: hide nothing. Also toggleable live via `/gatedjei reveal`. |
 | `unresolvedRecipePolicy` | `HIDE` | Recipes whose inputs can't be read (custom modded categories): `REVEAL` keeps them visible, `HIDE` gates them. |
 | `discoveryScope` | `PER_SAVE` | `PER_SAVE` or `GLOBAL`. |
@@ -105,6 +106,27 @@ JEI's item list fully visible.
 - `/gatedjei reveal` — toggle reveal-all and re-apply.
 - `/gatedjei reset` — wipe discovery for this save and re-hide.
 - `/gatedjei discoverall` — mark every item discovered (tests the unhide path).
+
+---
+
+## Mod compatibility
+
+### Iron's Spells 'n Spellbooks
+
+Spell scrolls are gated **per spell**, the same way enchanted books are gated per enchantment.
+Iron's registers a JEI subtype interpreter for `irons_spellbooks:scroll` and fills its creative
+tab with one scroll per spell *per level*, so without this JEI's list holds Fireball I…X, Magic
+Missile I…X and so on as separate entries — and touching a single scroll used to reveal the whole
+spell catalogue at once. Now you only see the scrolls you have actually held. How finely is up to
+`ironsSpellScrollDiscovery` (above); the default is the strict, one-exact-scroll reading.
+
+This is **soft compat**: the scroll item and its `irons_spellbooks:spell_container` component are
+looked up by id at runtime, there's no dependency in `build.gradle` and no compile-time reference
+to Iron's classes. Without Iron's installed it's inert. If a future Iron's release changes the
+component's shape, scrolls quietly fall back to per-item gating rather than disappearing.
+
+Only scrolls are affected. Spell books, magic swords and imbued armor carry the same component,
+but Iron's gives JEI a single generic entry for each of them, so they stay gated per item.
 
 ---
 
