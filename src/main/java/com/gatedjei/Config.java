@@ -2,6 +2,8 @@ package com.gatedjei;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+import java.util.List;
+
 /**
  * Client config. All of the toggles requested in the spec live here.
  */
@@ -37,6 +39,7 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue GRANULAR_SUBTYPE_DISCOVERY;
     public static final ModConfigSpec.BooleanValue REVEAL_ALL;
     public static final ModConfigSpec.EnumValue<SpellScrollDiscovery> IRONS_SPELL_SCROLL_DISCOVERY;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> EXTRA_CATEGORY_CATALYSTS;
     public static final ModConfigSpec.EnumValue<UnresolvedPolicy> UNRESOLVED_POLICY;
     public static final ModConfigSpec.EnumValue<DiscoveryScope> DISCOVERY_SCOPE;
     public static final ModConfigSpec.IntValue SCAN_INTERVAL_TICKS;
@@ -89,6 +92,27 @@ public final class Config {
                          "per-variant entries for them. Inert if Iron's isn't installed.",
                          "Requires granularSubtypeDiscovery = true and hideUndiscoveredItems = true.")
                 .defineEnum("ironsSpellScrollDiscovery", SpellScrollDiscovery.PER_SPELL_AND_LEVEL);
+
+        EXTRA_CATEGORY_CATALYSTS = b
+                .comment("Require a machine before its recipe tab appears, for categories that don't ask for one.",
+                         "",
+                         "JEI already does this on its own: a recipe category disappears while every item it",
+                         "registered as a 'catalyst' is hidden, which is why the smelting tab only shows up once",
+                         "you have touched a furnace, brewing once you have touched a stand, and so on for most",
+                         "modded machines. But a category that registers NO catalyst is never hidden that way, so",
+                         "it shows from world load. Create's Sequenced Assembly is one of those: every recipe in",
+                         "it needs a Deployer, yet Create registers no catalyst for the category.",
+                         "",
+                         "Each entry is  <recipe category id>=<item id>[,<item id>...]  and the tab appears once",
+                         "you have discovered ANY ONE of the listed items - the same rule JEI uses for its own",
+                         "catalysts. Entries naming a category or item that isn't installed are skipped, so it is",
+                         "safe to list mods you don't have. Set to [] to disable.",
+                         "Has no effect while hideUndiscoveredItems = false or revealAll = true, since the vanilla",
+                         "workstation gating this mirrors is switched off then too.")
+                .defineListAllowEmpty("extraCategoryCatalysts",
+                        List.of("create:sequenced_assembly=create:deployer"),
+                        () -> "modid:category=modid:item",
+                        o -> o instanceof String str && !str.isBlank());
 
         REVEAL_ALL = b
                 .comment("DEBUG: if true, nothing is hidden. Use to confirm JEI integration / disable gating fast.")

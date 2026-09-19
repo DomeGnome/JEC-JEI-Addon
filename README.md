@@ -91,6 +91,7 @@ JEI's item list fully visible.
 | `hideUndiscoveredFluids` | `true` | Hide undiscovered **fluids** (water, lava, modded) from JEI's fluid list. Fluids are a separate JEI ingredient type from items. |
 | `granularSubtypeDiscovery` | `true` | Gate items with NBT variants (enchanted books, potions) **per variant** instead of per item. Discovering a Sharpness book reveals only that book (+ the plain book); a Night Vision potion reveals only that potion. Needs `hideUndiscoveredItems = true`. |
 | `ironsSpellScrollDiscovery` | `PER_SPELL_AND_LEVEL` | Iron's Spells 'n Spellbooks scrolls (see [Mod compatibility](#mod-compatibility)). `PER_SPELL_AND_LEVEL` reveals only the exact scroll you touched (Fireball IV reveals Fireball IV); `PER_SPELL` reveals every level of that spell; `OFF` gates scrolls per item, so any one scroll reveals them all. Needs `granularSubtypeDiscovery = true`. |
+| `extraCategoryCatalysts` | `["create:sequenced_assembly=create:deployer"]` | Require a machine before its recipe tab appears, for categories that don't register a catalyst of their own (see [Mod compatibility](#mod-compatibility)). Entry form `<category id>=<item id>[,<item id>...]`; the tab unlocks on **any one** of the listed items. Needs `hideUndiscoveredItems = true`. |
 | `revealAll` | `false` | Debug: hide nothing. Also toggleable live via `/gatedjei reveal`. |
 | `unresolvedRecipePolicy` | `HIDE` | Recipes whose inputs can't be read (custom modded categories): `REVEAL` keeps them visible, `HIDE` gates them. |
 | `discoveryScope` | `PER_SAVE` | `PER_SAVE` or `GLOBAL`. |
@@ -127,6 +128,27 @@ component's shape, scrolls quietly fall back to per-item gating rather than disa
 
 Only scrolls are affected. Spell books, magic swords and imbued armor carry the same component,
 but Iron's gives JEI a single generic entry for each of them, so they stay gated per item.
+
+### Create
+
+Most Create machines already gate themselves, and not because of anything this mod does. JEI hides
+a recipe category while every item that category registered as a *catalyst* is hidden, and
+`hideUndiscoveredItems` is what hides them — so the mixer's tab waits for a mixer, the press's for a
+press, exactly as the furnace's waits for a furnace. Nothing to configure.
+
+The exception is a category that registers **no** catalyst at all, which JEI then never hides.
+Create's **Sequenced Assembly** is one: every recipe in it needs a Deployer, but the category
+declares no catalyst, so the tab used to show from world load before you had touched a single Create
+item. `extraCategoryCatalysts` supplies the missing catalyst — by default the Deployer — and the tab
+now behaves like every other machine's.
+
+Create's other catalyst-less categories are deliberately left alone: Item Application can be done by
+hand as well as by Deployer, and Mystery Conversion needs no machine. Add them to the config
+yourself if you disagree.
+
+One limitation worth knowing: once the Deployer unlocks the category, *every* sequenced assembly
+recipe is visible at once rather than gating on its own ingredients. Create's recipes don't expose
+their inputs through the vanilla recipe API, so there is nothing for the ingredient gating to read.
 
 ---
 

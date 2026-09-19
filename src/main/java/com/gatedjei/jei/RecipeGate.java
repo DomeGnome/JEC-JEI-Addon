@@ -4,6 +4,7 @@ import com.gatedjei.Config;
 import com.gatedjei.GatedJei;
 import com.gatedjei.discovery.DiscoveryState;
 import com.gatedjei.discovery.SubtypeKeys;
+import com.gatedjei.recipe.CategoryCatalysts;
 import com.gatedjei.recipe.RecipeInputResolver;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.recipe.RecipeType;
@@ -12,6 +13,7 @@ import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.runtime.IIngredientManager;
 import mezz.jei.api.runtime.IJeiRuntime;
 import mezz.jei.api.recipe.IRecipeManager;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
@@ -22,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -82,6 +85,11 @@ public final class RecipeGate {
     private final Map<String, List<ItemStack>> variantByKey = new HashMap<>();
     // Complete fluid list captured before any removal, so reset can re-hide reliably (same reason as items).
     private final List<FluidStack> fluidSnapshot = new ArrayList<>();
+    // Categories that declared no catalyst of their own, and the items standing in for one.
+    private final Map<ResourceLocation, Set<Item>> categoryCatalysts = new LinkedHashMap<>();
+    // The config list the map above was parsed from, so an edit is picked up but a bad line is
+    // only logged when it actually changes instead of on every pass.
+    private List<? extends String> categoryCatalystsSource;
 
     private RecipeGate() {}
 
@@ -100,6 +108,8 @@ public final class RecipeGate {
         itemVariants.clear();
         variantByKey.clear();
         fluidSnapshot.clear();
+        categoryCatalysts.clear();
+        categoryCatalystsSource = null;
     }
 
     // ---- index ----
@@ -227,6 +237,8 @@ public final class RecipeGate {
             applyFluidListHiding();
         }
 
+        applyCategoryGating(rm);
+
         if (Config.LOG_STATS.get()) {
             long shown = all.stream().filter(g -> g.visible).count();
             GatedJei.LOGGER.info("Gating applied: {} of {} recipes visible; {} items discovered.",
@@ -248,6 +260,11 @@ public final class RecipeGate {
         }
 
         IRecipeManager rm = runtime.getRecipeManager();
+
+        // Picking up a deployer should reveal its tab now, not on the next reload.
+        if (touchesCategoryCatalyst(newly)) {
+            applyCategoryGating(rm);
+        }
 
         // unique candidate recipes touched by the new items
         Set<Gated> candidates = new HashSet<>();
@@ -305,6 +322,82 @@ public final class RecipeGate {
     @SuppressWarnings("unchecked")
     private <T> void unhide(IRecipeManager rm, RecipeType<?> type, List<Object> recipes) {
         rm.unhideRecipes((RecipeType<T>) type, (List<T>) (List<?>) recipes);
+    }
+
+    // ---- stand-in catalysts: gate a category behind its machine ----
+
+    /**
+     * Hides each configured category until one of its stand-in catalyst items is discovered.
+     *
+     * <p>JEI already does this for any category that registered a catalyst of its own — that is
+     * why the smelting tab waits for a furnace — but it skips categories that registered none, so
+     * those show from world load however little you own. {@code hideRecipeCategory} puts the
+     * category in the same {@code hiddenRecipeTypes} set JEI checks first, so the outcome is
+     * identical: no tab at all until you have the machine.
+     */
+    private void applyCategoryGating(IRecipeManager rm) {
+        refreshCategoryCatalysts();
+        if (categoryCatalysts.isEmpty()) {
+            return;
+        }
+        // The gating this stands in for exists only because hideUndiscoveredItems strips the
+        // catalyst out of JEI's list, so it has to switch off with that toggle rather than diverge.
+        boolean gating = Config.HIDE_UNDISCOVERED_ITEMS.get() && !Config.REVEAL_ALL.get();
+        DiscoveryState state = DiscoveryState.get();
+
+        for (Map.Entry<ResourceLocation, Set<Item>> entry : categoryCatalysts.entrySet()) {
+            RecipeType<?> type = rm.getRecipeType(entry.getKey()).orElse(null);
+            if (type == null) {
+                continue; // that mod isn't installed, or it renamed the category
+            }
+            boolean unlocked = !gating;
+            if (!unlocked) {
+                for (Item item : entry.getValue()) {
+                    if (state.isDiscovered(item)) {
+                        unlocked = true;
+                        break;
+                    }
+                }
+            }
+            try {
+                if (unlocked) {
+                    rm.unhideRecipeCategory(type);
+                } else {
+                    rm.hideRecipeCategory(type);
+                }
+            } catch (Throwable t) {
+                GatedJei.LOGGER.warn("Category gating for {} failed: {}", entry.getKey(), t.toString());
+            }
+        }
+    }
+
+    /** True if any newly discovered item unlocks a gated category, so we only re-apply when it matters. */
+    private boolean touchesCategoryCatalyst(Set<Item> newly) {
+        refreshCategoryCatalysts();
+        for (Set<Item> items : categoryCatalysts.values()) {
+            for (Item item : items) {
+                if (newly.contains(item)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Re-parses the config only when it has actually changed, so edits apply without a restart. */
+    private void refreshCategoryCatalysts() {
+        List<? extends String> configured = Config.EXTRA_CATEGORY_CATALYSTS.get();
+        if (configured == null) {
+            configured = List.of();
+        }
+        if (configured.equals(categoryCatalystsSource)) {
+            return;
+        }
+        // ArrayList, not List.copyOf: a hand-edited toml can leave a null in the list, and the
+        // parser already skips those — it shouldn't blow up before it gets the chance.
+        categoryCatalystsSource = new ArrayList<>(configured);
+        categoryCatalysts.clear();
+        categoryCatalysts.putAll(CategoryCatalysts.resolve(configured, true));
     }
 
     // ---- optional: hide items from JEI's ingredient list ----

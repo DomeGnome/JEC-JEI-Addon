@@ -36,6 +36,23 @@
 	#Allowed Values: OFF, PER_SPELL, PER_SPELL_AND_LEVEL
 	ironsSpellScrollDiscovery = "PER_SPELL_AND_LEVEL"
 
+	#Require a machine before its recipe tab appears, for categories that don't ask for one.
+	#
+	#JEI already does this on its own: a recipe category disappears while every item it
+	#registered as a 'catalyst' is hidden, which is why the smelting tab only shows up once
+	#you have touched a furnace, brewing once you have touched a stand, and so on for most
+	#modded machines. But a category that registers NO catalyst is never hidden that way, so
+	#it shows from world load. Create's Sequenced Assembly is one of those: every recipe in
+	#it needs a Deployer, yet Create registers no catalyst for the category.
+	#
+	#Each entry is  <recipe category id>=<item id>[,<item id>...]  and the tab appears once
+	#you have discovered ANY ONE of the listed items - the same rule JEI uses for its own
+	#catalysts. Entries naming a category or item that isn't installed are skipped, so it is
+	#safe to list mods you don't have. Set to [] to disable.
+	#Has no effect while hideUndiscoveredItems = false or revealAll = true, since the vanilla
+	#workstation gating this mirrors is switched off then too.
+	extraCategoryCatalysts = ["create:sequenced_assembly=create:deployer"]
+
 	#DEBUG: if true, nothing is hidden. Use to confirm JEI integration / disable gating fast.
 	revealAll = false
 
