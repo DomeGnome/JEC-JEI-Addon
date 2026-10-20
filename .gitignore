@@ -22,3 +22,6 @@ eclipse/
 # OS clutter
 .DS_Store
 Thumbs.db
+
+# Claude Code agent worktrees (transient scratch checkouts)
+.claude/worktrees/
