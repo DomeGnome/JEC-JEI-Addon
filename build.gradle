@@ -51,9 +51,21 @@ neoForge {
             sourceSet sourceSets.main
         }
     }
+
+    // Tier B: load the test source set as the mod itself so FML boots the game.
+    // testedMod is REQUIRED -- enable() alone leaves the registries un-bootstrapped.
+    unitTest {
+        enable()
+        testedMod = mods."${project.mod_id}"
+    }
 }
 
 dependencies {
+    // --- JUnit 5 for the game-bootstrapped 'test' suite (Tier B) ---
+    testImplementation platform("org.junit:junit-bom:5.10.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
     // Compile against the JEI API only; the full JEI jar is pulled in at runtime.
     compileOnly "mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}"
     compileOnly "mezz.jei:jei-${project.minecraft_version}-neoforge-api:${project.jei_version}"
@@ -83,4 +95,26 @@ tasks.named('processResources', ProcessResources).configure {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = 21
+}
+
+// Tier A lives in its own source set (src/pureTest/java) so it runs WITHOUT booting FML.
+// MDG only ever attaches the game to the 'test' suite, so this one stays pure and fast.
+testing {
+    suites {
+        pureTest(JvmTestSuite) {
+            useJUnitJupiter('5.10.2')
+        }
+    }
+}
+
+tasks.named('check').configure {
+    dependsOn tasks.named('pureTest')
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "failed", "skipped"
+        exceptionFormat = "full"
+    }
 }
