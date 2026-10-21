@@ -160,6 +160,24 @@ public final class DiscoveryHooks {
         observe(stack, ObservationQueue.Cause.SWEEP);
     }
 
+    /**
+     * Observe a stack with the fast path deliberately bypassed.
+     *
+     * <p>For {@code /gatedjei discoverheld}. A normal sweep consults
+     * {@link ComprehensionTables#nothingLeftToTeach}, so it cannot tell you whether a stack was
+     * missed because a hook never fired or because the fast path wrongly skipped it. This forces
+     * full comprehension of everything, which makes the command a diagnostic: if it reports new
+     * discoveries for items you have plainly been carrying, something upstream is not working.
+     *
+     * <p>Also marks no liveness, for the same reason sweeps do not.
+     */
+    public static void onForcedSweep(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return;
+        }
+        QUEUE.observe(stack, ObservationQueue.Cause.SWEEP);
+    }
+
     private static void observe(ItemStack stack, ObservationQueue.Cause cause) {
         try {
             if (tables.nothingLeftToTeach(stack, KNOWN)) {

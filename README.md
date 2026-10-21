@@ -102,8 +102,14 @@ JEI's item list fully visible.
 
 - `/gatedjei stats` — discovered count + visible/total recipes.
 - `/gatedjei reveal` — toggle reveal-all and re-apply.
-- `/gatedjei reset` — wipe discovery for this save and re-hide.
-- `/gatedjei discoverall` — mark every item discovered (tests the unhide path).
+- `/gatedjei reset` — wipe discovery for this save, re-hide, then re-sweep what you carry.
+- `/gatedjei discoverheld` — re-derive discovery from what you are actually carrying, with the
+  fast path bypassed. This is the manual remedy for the one route no hook can see: `Inventory.items`
+  is a public field, so another mod writing it directly is invisible to every mixin. It is also a
+  diagnostic — if it reports new discoveries for items you have plainly been holding, something
+  upstream is not working.
+- `/gatedjei discoverall` — mark every item discovered, plus variants of anything held (tests the
+  unhide path).
 
 ---
 

@@ -63,6 +63,36 @@ public final class GateCommands {
                     say(ctx.getSource(), "Discovery reset for this save (items + fluids). Recipes re-hidden.");
                     return 1;
                 }))
+                .then(net.minecraft.commands.Commands.literal("discoverheld").executes(ctx -> {
+                    // Re-derives discovery from what you are actually carrying, with the fast path
+                    // bypassed. This is the manual remedy for the one miss route no mixin can
+                    // intercept -- Inventory.items is a public field, so another mod writing it
+                    // directly is invisible to every hook.
+                    //
+                    // It doubles as a diagnostic: if this reports new discoveries for items you
+                    // have plainly been holding, something upstream is not working.
+                    DiscoveryState state = DiscoveryState.get();
+                    int itemsBefore = state.count();
+                    int fluidsBefore = state.fluidCount();
+                    int variantsBefore = state.variantCount();
+
+                    int swept = com.gatedjei.discovery.ClientDiscoveryHandler.forcedSweepNow();
+
+                    int newItems = state.count() - itemsBefore;
+                    int newFluids = state.fluidCount() - fluidsBefore;
+                    int newVariants = state.variantCount() - variantsBefore;
+
+                    if (newItems == 0 && newFluids == 0 && newVariants == 0) {
+                        say(ctx.getSource(), String.format(
+                                "Swept %d held stacks: nothing new. Discovery is up to date.", swept));
+                    } else {
+                        say(ctx.getSource(), String.format(
+                                "Swept %d held stacks: %d new item(s), %d new fluid(s), %d new variant(s). "
+                                        + "Anything new here means it was not caught when you obtained it.",
+                                swept, newItems, newFluids, newVariants));
+                    }
+                    return 1;
+                }))
                 .then(net.minecraft.commands.Commands.literal("discoverall").executes(ctx -> {
                     // Marks every registered item AND fluid discovered (useful for testing the unhide path).
                     List<Item> everything = new ArrayList<>();
@@ -75,7 +105,13 @@ public final class GateCommands {
                         allFluids.add(fluid);
                     }
                     DiscoveryState.get().discoverAllFluids(allFluids);
-                    say(ctx.getSource(), "Discovered all " + everything.size() + " items and " + allFluids.size() + " fluids.");
+                    // Also force-comprehend what is held, so subtype VARIANTS of carried items
+                    // (specific enchantments / potions) are recorded too. Without this, granular
+                    // mode left every book and potion variant hidden after a discoverall, which
+                    // made the command useless for testing the unhide path it exists to test.
+                    com.gatedjei.discovery.ClientDiscoveryHandler.forcedSweepNow();
+                    say(ctx.getSource(), "Discovered all " + everything.size() + " items and "
+                            + allFluids.size() + " fluids (plus variants of anything held).");
                     return 1;
                 }));
 

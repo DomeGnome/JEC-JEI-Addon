@@ -220,6 +220,33 @@ public final class ClientDiscoveryHandler {
         }
     }
 
+    /**
+     * Comprehend everything currently held, with the fast path bypassed, and apply it immediately.
+     *
+     * <p>Backs {@code /gatedjei discoverheld}. This is the manual remedy for the one miss route no
+     * mixin can intercept: {@code Inventory.items} is a public field, so another mod writing it
+     * directly is invisible to every hook. Running this re-derives discovery from what you are
+     * actually carrying.
+     *
+     * @return the number of stacks observed
+     */
+    public static int forcedSweepNow() {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (player == null) {
+            return 0;
+        }
+        List<ItemStack> held = collectHeldStacks(player);
+        for (ItemStack stack : held) {
+            DiscoveryHooks.onForcedSweep(stack);
+        }
+        DiscoveryState state = DiscoveryState.get();
+        if (state.loadedKey() != null) {
+            drain(state); // apply now, so the command can report a result rather than a promise
+        }
+        return held.size();
+    }
+
     /** Loads the discovery sets if they haven't been loaded for the current save key yet. */
     public static void ensureLoadedForCurrentSave() {
         DiscoveryState state = DiscoveryState.get();
