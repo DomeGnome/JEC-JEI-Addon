@@ -5,6 +5,7 @@ import com.gatedjei.GatedJei;
 import com.gatedjei.discovery.DiscoveryState;
 import com.gatedjei.discovery.SubtypeKeys;
 import com.gatedjei.recipe.RecipeInputResolver;
+import com.gatedjei.recipe.SatisfactionRule;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
@@ -25,6 +26,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * The bridge between discovery state and JEI's runtime.
@@ -140,47 +142,31 @@ public final class RecipeGate {
 
     // ---- gating logic ----
 
-    private boolean isSatisfied(Gated g) {
-        DiscoveryState state = DiscoveryState.get();
-        // every input group needs at least one discovered item
-        for (Set<Item> group : g.inputGroups) {
-            boolean any = false;
-            for (Item item : group) {
-                if (state.isDiscovered(item)) {
-                    any = true;
-                    break;
-                }
-            }
-            if (!any) {
-                return false;
-            }
-        }
-        // optional: outputs must be discovered too
-        if (Config.REQUIRE_OUTPUTS_DISCOVERED.get()) {
-            for (Item item : g.outputItems) {
-                if (!state.isDiscovered(item)) {
-                    return false;
-                }
-            }
-        }
-        return true;
+    /**
+     * Snapshot the current config toggles for the pure rule.
+     *
+     * <p>Read once per decision rather than captured, because {@code /gatedjei reveal} and config
+     * reloads change these between calls.
+     */
+    private static SatisfactionRule.Options options() {
+        return new SatisfactionRule.Options(
+                Config.REVEAL_ALL.get(),
+                Config.REQUIRE_OUTPUTS_DISCOVERED.get(),
+                Config.UNRESOLVED_POLICY.get() == Config.UnresolvedPolicy.REVEAL);
     }
 
-    /** Should this recipe be visible right now, given config + discovery? */
+    /**
+     * Should this recipe be visible right now, given config + discovery?
+     *
+     * <p>The decision itself lives in {@link SatisfactionRule}, which imports no Minecraft types so
+     * that {@code src/pureTest} can exercise this exact logic without the game. This method is only
+     * the adapter: it supplies the item-level discovery predicate and the config snapshot.
+     */
     private boolean shouldBeVisible(Gated g) {
-        if (Config.REVEAL_ALL.get()) {
-            return true;
-        }
-        if (!g.resolved) {
-            // can't read its inputs
-            return Config.UNRESOLVED_POLICY.get() == Config.UnresolvedPolicy.REVEAL;
-        }
-        // A recipe with no input groups at all (e.g. nothing readable) is treated as unresolved-ish:
-        // reveal it so we never permanently hide something we can't reason about.
-        if (g.inputGroups.isEmpty() && g.outputItems.isEmpty()) {
-            return true;
-        }
-        return isSatisfied(g);
+        DiscoveryState state = DiscoveryState.get();
+        Predicate<Item> discovered = state::isDiscovered;
+        return SatisfactionRule.shouldReveal(
+                g.resolved, g.inputGroups, g.outputItems, discovered, options());
     }
 
     // ---- apply ----

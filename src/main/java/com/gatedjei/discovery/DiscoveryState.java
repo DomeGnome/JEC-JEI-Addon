@@ -28,6 +28,11 @@ public final class DiscoveryState {
     private final Set<Item> discovered = new HashSet<>();
     private final Set<Fluid> discoveredFluids = new HashSet<>();
     private final Set<String> discoveredVariants = new HashSet<>();
+    // Registry ids loaded from disk that this launch cannot resolve -- typically because a mod was
+    // removed. Kept verbatim and written back on save so that removing a mod and later re-adding it
+    // does not silently erase everything the player had discovered from it.
+    private final Set<String> unresolvedItemIds = new HashSet<>();
+    private final Set<String> unresolvedFluidIds = new HashSet<>();
     private final List<Consumer<Set<Item>>> listeners = new ArrayList<>();
     private final List<Consumer<Set<Fluid>>> fluidListeners = new ArrayList<>();
     private final List<Consumer<Set<String>>> variantListeners = new ArrayList<>();
@@ -49,6 +54,42 @@ public final class DiscoveryState {
 
     public void addVariantListener(Consumer<Set<String>> onNewlyDiscovered) {
         variantListeners.add(onNewlyDiscovered);
+    }
+
+    /**
+     * Unregister a previously added item listener.
+     *
+     * <p>Note that a method reference creates a fresh object each time it is written, so callers
+     * wanting to remove a listener must keep the instance they registered. Most callers want
+     * {@link #clearListeners()} instead.
+     */
+    public void removeListener(Consumer<Set<Item>> listener) {
+        listeners.remove(listener);
+    }
+
+    public void removeFluidListener(Consumer<Set<Fluid>> listener) {
+        fluidListeners.remove(listener);
+    }
+
+    public void removeVariantListener(Consumer<Set<String>> listener) {
+        variantListeners.remove(listener);
+    }
+
+    /**
+     * Drop every registered listener.
+     *
+     * <p>Exists for test isolation: this is a process-wide singleton and Gradle reuses one JVM
+     * across test methods, so a listener registered by one test would otherwise fire for every
+     * later test in the run.
+     *
+     * <p>Deliberately NOT called from {@link #unload()}. Listeners are registered exactly once, in
+     * the mod constructor, not per world load -- so clearing them on logout would permanently stop
+     * JEI from being updated for the rest of the game session.
+     */
+    public void clearListeners() {
+        listeners.clear();
+        fluidListeners.clear();
+        variantListeners.clear();
     }
 
     // ---- items ----
@@ -167,6 +208,18 @@ public final class DiscoveryState {
         }
     }
 
+    // ---- ids this launch cannot resolve ----
+
+    /** Item ids read from disk that are not in the current registry; preserved across saves. */
+    public Set<String> viewUnresolvedItemIds() {
+        return Collections.unmodifiableSet(unresolvedItemIds);
+    }
+
+    /** Fluid ids read from disk that are not in the current registry; preserved across saves. */
+    public Set<String> viewUnresolvedFluidIds() {
+        return Collections.unmodifiableSet(unresolvedFluidIds);
+    }
+
     // ---- lifecycle ----
 
     public String loadedKey() {
@@ -182,20 +235,37 @@ public final class DiscoveryState {
     }
 
     public void replaceLoaded(String key, Set<Item> loadedItems, Set<Fluid> loadedFluids, Set<String> loadedVariants) {
+        replaceLoaded(key, loadedItems, loadedFluids, loadedVariants, Set.of(), Set.of());
+    }
+
+    public void replaceLoaded(String key, Set<Item> loadedItems, Set<Fluid> loadedFluids,
+                              Set<String> loadedVariants, Set<String> unresolvedItems,
+                              Set<String> unresolvedFluids) {
         discovered.clear();
         discovered.addAll(loadedItems);
         discoveredFluids.clear();
         discoveredFluids.addAll(loadedFluids);
         discoveredVariants.clear();
         discoveredVariants.addAll(loadedVariants);
+        unresolvedItemIds.clear();
+        unresolvedItemIds.addAll(unresolvedItems);
+        unresolvedFluidIds.clear();
+        unresolvedFluidIds.addAll(unresolvedFluids);
         loadedKey = key;
         dirty = false;
     }
 
+    /**
+     * Forget the current save's discovery sets.
+     *
+     * <p>Listeners are intentionally left registered -- see {@link #clearListeners()}.
+     */
     public void unload() {
         discovered.clear();
         discoveredFluids.clear();
         discoveredVariants.clear();
+        unresolvedItemIds.clear();
+        unresolvedFluidIds.clear();
         loadedKey = null;
         dirty = false;
     }

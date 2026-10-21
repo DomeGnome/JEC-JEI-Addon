@@ -53,7 +53,8 @@ public final class GateCommands {
                     String key = state.loadedKey();
                     state.replaceLoaded(key, new java.util.HashSet<>(), new java.util.HashSet<>(), new java.util.HashSet<>());
                     if (key != null) {
-                        DiscoveryStorage.save(key, state.view(), state.viewFluids(), state.viewVariants());
+                        DiscoveryStorage.save(key, state.view(), state.viewFluids(), state.viewVariants(),
+                                state.viewUnresolvedItemIds(), state.viewUnresolvedFluidIds());
                     }
                     RecipeGate.INSTANCE.reapply();
                     say(ctx.getSource(), "Discovery reset for this save (items + fluids). Recipes re-hidden.");

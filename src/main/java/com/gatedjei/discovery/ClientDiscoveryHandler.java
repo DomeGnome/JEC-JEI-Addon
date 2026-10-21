@@ -53,7 +53,8 @@ public final class ClientDiscoveryHandler {
     public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         DiscoveryState state = DiscoveryState.get();
         if (state.loadedKey() != null) {
-            DiscoveryStorage.save(state.loadedKey(), state.view(), state.viewFluids(), state.viewVariants());
+            DiscoveryStorage.save(state.loadedKey(), state.view(), state.viewFluids(), state.viewVariants(),
+                    state.viewUnresolvedItemIds(), state.viewUnresolvedFluidIds());
         }
         state.unload();
     }
@@ -109,7 +110,8 @@ public final class ClientDiscoveryHandler {
         if (++saveCounter >= SAVE_EVERY_TICKS) {
             saveCounter = 0;
             if (state.isDirty() && state.loadedKey() != null) {
-                DiscoveryStorage.save(state.loadedKey(), state.view(), state.viewFluids(), state.viewVariants());
+                DiscoveryStorage.save(state.loadedKey(), state.view(), state.viewFluids(), state.viewVariants(),
+                    state.viewUnresolvedItemIds(), state.viewUnresolvedFluidIds());
                 state.clearDirty();
             }
         }
@@ -123,7 +125,8 @@ public final class ClientDiscoveryHandler {
             return;
         }
         DiscoveryStorage.Loaded loaded = DiscoveryStorage.load(key);
-        state.replaceLoaded(key, loaded.items(), loaded.fluids(), loaded.variants());
+        state.replaceLoaded(key, loaded.items(), loaded.fluids(), loaded.variants(),
+                loaded.unresolvedItemIds(), loaded.unresolvedFluidIds());
         GatedJei.LOGGER.info("Loaded {} items and {} fluids for save '{}'.",
                 loaded.items().size(), loaded.fluids().size(), key);
     }

@@ -108,6 +108,13 @@ testing {
     suites {
         pureTest(JvmTestSuite) {
             useJUnitJupiter('5.10.2')
+            dependencies {
+                // Depend on the mod's own classes so Tier A tests the REAL rule rather than a
+                // restatement of it. This does mean Tier A now requires main to compile, so it is
+                // no longer fully decoupled from the Minecraft classpath -- but the artifacts are
+                // cached, and a test that guards production code is worth a couple of seconds.
+                implementation project()
+            }
         }
     }
 }
