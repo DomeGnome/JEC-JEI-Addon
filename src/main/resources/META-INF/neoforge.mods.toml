@@ -14,6 +14,13 @@ ${mod_description}
 # matching during the client<->server handshake.
 displayTest = "IGNORE_ALL_VERSION"
 
+# --- Mixins ---
+# Top-level list (NOT namespaced by modId, unlike [[dependencies.<modid>]]).
+# FML reads the "mixins" array and requires a "config" key; the value is a path
+# relative to the jar root.
+[[mixins]]
+config = "${mod_id}.mixins.json"
+
 # --- Dependencies ---
 
 [[dependencies.${mod_id}]]

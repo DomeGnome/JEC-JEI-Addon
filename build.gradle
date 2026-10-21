@@ -71,6 +71,11 @@ dependencies {
     compileOnly "mezz.jei:jei-${project.minecraft_version}-neoforge-api:${project.jei_version}"
     // Use the full JEI build in the dev client so you can actually see the gating work:
     runtimeOnly "mezz.jei:jei-${project.minecraft_version}-neoforge:${project.jei_version}"
+
+    // Mixin annotation processor. Not required to build or run a mixin on NeoForge, but it
+    // turns "my @Inject silently didn't apply" into a compile error -- which is the only
+    // way to catch a bad target offline, since there is no display to boot the game on.
+    annotationProcessor "net.fabricmc:sponge-mixin:${project.mixin_version}"
 }
 
 // Interpolate gradle.properties values into neoforge.mods.toml at build time.
@@ -117,4 +122,19 @@ tasks.withType(Test).configureEach {
         events "passed", "failed", "skipped"
         exceptionFormat = "full"
     }
+}
+
+// Pairs with the annotationProcessor above.
+tasks.named('compileJava', JavaCompile).configure {
+    options.compilerArgs += [
+        // NeoForge 1.21.1 runs on official Mojang names, so there is no searge/notch
+        // obfuscation to map into and no refmap to emit. The AP's bundled ObfuscationServiceMCP
+        // does not know that and raises these as hard errors, so downgrade them.
+        '-AMSG_NO_OBFDATA_FOR_TARGET=warning',
+        '-AMSG_NO_OBFDATA_FOR_OVERWRITE=warning',
+        '-AMSG_NO_OBFDATA_FOR_SOFT_IMPLEMENTS=warning',
+        // Keep the part worth having, and make it fatal: a target method that does not exist
+        // in the target class fails the build instead of warning.
+        '-AMSG_TARGET_ELEMENT_NOT_FOUND=error',
+    ]
 }

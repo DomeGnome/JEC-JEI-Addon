@@ -1,0 +1,13 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.gatedjei.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [],
+  "client": [
+    "InventoryMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}
