@@ -93,9 +93,8 @@ JEI's item list fully visible.
 | `revealAll` | `false` | Debug: hide nothing. Also toggleable live via `/gatedjei reveal`. |
 | `unresolvedRecipePolicy` | `HIDE` | Recipes whose inputs can't be read (custom modded categories): `REVEAL` keeps them visible, `HIDE` gates them. |
 | `discoveryScope` | `PER_SAVE` | `PER_SAVE` or `GLOBAL`. |
-| `scanIntervalTicks` | `10` | How often (ticks) to scan inventory for newly touched items. |
-| `discoverFluidsByWading` | `true` | Learn a fluid by standing in / wading through it. |
-| `discoverFluidsByBucket` | `true` | Learn a fluid by holding a bucket of it (also teaches the contained fluid). |
+| `fallbackSweepIntervalTicks` | `100` | **Fallback only.** Discovery is event-driven, so there is normally no scanning at all. If the mod detects its hooks never fired, it warns and falls back to sweeping this often. `0` disables the fallback. |
+| `discoverFluidsByBucket` | `true` | Learn a fluid by holding a bucket (or other container) of it. This is the **only** way fluids are learned — wading through a fluid teaches nothing. |
 | `discoverBaseContainer` | `true` | When you comprehend a "filled" item, also discover the empty base it's built on: filled bucket → bucket, enchanted book → book, potion → glass bottle, tipped arrow → arrow, soup → bowl. Set false to learn only the filled item. |
 | `logStats` | `false` | Log indexing/gating stats. |
 
@@ -111,16 +110,41 @@ JEI's item list fully visible.
 ## How it works (architecture)
 
 ```
-ClientDiscoveryHandler ──scan inventory──▶ DiscoveryState ──delta listener──▶ RecipeGate ──hide/unhide──▶ JEI
+mixin hooks ──observe──▶ ObservationQueue ──drain once per tick──▶ DiscoveryState ──delta listener──▶ RecipeGate ──hide/unhide──▶ JEI
         │                                       │                                  ▲
         └─ load/save per save key ──▶ DiscoveryStorage (NBT)        GatedJeiPlugin.onRuntimeAvailable
                        (SaveContext)                                  (builds index, full apply)
 ```
 
-- **Discovery tracking** (`discovery/`): a throttled client-tick scan of inventory + armor + offhand
-  + cursor marks every held item type as discovered. Permanent, persisted to
-  `<gamedir>/gatedjei/<key>.dat` as compressed NBT (item registry ids). Scanning (not pickup events)
-  is what makes it work identically in SP and on dedicated servers from the client side.
+- **Discovery tracking** (`discovery/`, `hook/`, `mixin/`): **event-driven.** Six Mixin hooks observe
+  items as they enter the local player's inventory and enqueue anything that might teach something
+  new; the queue is drained once per client tick. Idle cost is one `isEmpty` check — there is no
+  periodic scanning.
+
+  NeoForge's `ItemEntityPickupEvent` is documented *"only fired on the logical server"*, so a
+  client-only mod cannot use it. The hooks instead sit on the inventory write paths, which is both
+  server-independent **and** more complete than pickup would be — crafting, chest withdrawals,
+  villager trades and `/give` never involve an item entity at all.
+
+  The hooks, and why each is needed:
+
+  | Hook | Covers |
+  |---|---|
+  | `Inventory#setItem` | the universal choke point: slot syncs, chests, trades, furnace output, `/give` |
+  | `Inventory#add` | ground pickups, crafting remainders — and damaged stacks, which bypass `setItem` |
+  | `Inventory#setPickedItem` | creative middle-click pick-block, which also bypasses `setItem` |
+  | `AbstractContainerMenu#setCarried` | the cursor stack, which never passes through `Inventory` |
+  | `AbstractContainerMenu#initializeContents` | the carried stack on a bulk sync, assigned directly and never re-announced |
+  | `Player#setItemSlot` | filling your *last* bucket or bottle, milking, bucketing a fish, stew→bowl, cauldrons, offhand swap |
+
+  Sweeps are one-shot, never periodic: on world join (an event design sees only *changes*, so an
+  existing inventory needs reading once), on `/gatedjei reset`, on config reload, and on a liveness
+  failure — if no hook has fired after 30s the mixins did not apply, and the mod says so loudly and
+  degrades to periodic sweeping rather than silently stopping.
+
+  Discovery is permanent, persisted to `<gamedir>/gatedjei/<key>.dat` as compressed NBT. Registry
+  ids this launch cannot resolve are kept verbatim, so uninstalling a mod and later reinstalling it
+  does not erase what you had learned from it.
 - **Recipe input model** (`recipe/RecipeInputResolver.java`): for each JEI recipe object, if it's a
   vanilla-style `RecipeHolder`/`Recipe`, read `getIngredients()` and expand each `Ingredient` (tags
   included) to a "any-of" set of items. A recipe is satisfied when **every** input group contains at

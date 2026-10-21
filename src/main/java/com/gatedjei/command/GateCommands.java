@@ -57,6 +57,9 @@ public final class GateCommands {
                                 state.viewUnresolvedItemIds(), state.viewUnresolvedFluidIds());
                     }
                     RecipeGate.INSTANCE.reapply();
+                    // Re-observe what the player is carrying. The old polling scan did this a tick
+                    // later by itself; with discovery event-driven, the reset has to ask for it.
+                    com.gatedjei.discovery.ClientDiscoveryHandler.sweepNow("reset");
                     say(ctx.getSource(), "Discovery reset for this save (items + fluids). Recipes re-hidden.");
                     return 1;
                 }))

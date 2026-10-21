@@ -65,7 +65,7 @@ public final class ItemComprehension {
         if (!hadFluid) {
             return;
         }
-        if (!Config.DISCOVER_BASE_CONTAINER.get()) {
+        if (!Config.orDefault(Config.DISCOVER_BASE_CONTAINER, true)) {
             return; // base-container discovery toggled off: learn the fluid but not the empty container
         }
         try {
@@ -89,7 +89,7 @@ public final class ItemComprehension {
             outVariants.add(SubtypeKeys.variantKey(stack));
         }
         // Holding a filled subtype item means you also hold the empty base it's built on.
-        if (Config.DISCOVER_BASE_CONTAINER.get()) {
+        if (Config.orDefault(Config.DISCOVER_BASE_CONTAINER, true)) {
             Item base = baseContainerOf(item);
             if (base != null) {
                 outItems.add(base);

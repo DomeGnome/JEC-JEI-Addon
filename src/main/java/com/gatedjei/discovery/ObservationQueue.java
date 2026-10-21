@@ -1,5 +1,6 @@
 package com.gatedjei.discovery;
 
+import com.gatedjei.Config;
 import com.gatedjei.GatedJei;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -154,9 +155,14 @@ public final class ObservationQueue {
         Set<Fluid> fluids = new HashSet<>();
         Set<String> variants = new HashSet<>();
 
+        boolean inspectFluids = Config.orDefault(Config.DISCOVER_FLUIDS_BY_BUCKET, true);
         for (ItemStack stack : batch) {
             try {
-                ItemComprehension.comprehend(stack, items, fluids, variants);
+                if (inspectFluids) {
+                    ItemComprehension.comprehend(stack, items, fluids, variants);
+                } else {
+                    ItemComprehension.comprehendItemOnly(stack, items, variants);
+                }
             } catch (Throwable t) {
                 // One malformed stack must not cost us the rest of the batch.
                 if (!warnedComprehendFailure) {

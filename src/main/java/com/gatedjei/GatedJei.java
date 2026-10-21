@@ -1,11 +1,13 @@
 package com.gatedjei;
 
+import com.gatedjei.discovery.ClientDiscoveryHandler;
 import com.gatedjei.discovery.DiscoveryState;
 import com.gatedjei.jei.RecipeGate;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.config.ModConfigEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +43,17 @@ public final class GatedJei {
         DiscoveryState.get().addFluidListener(RecipeGate.INSTANCE::onNewlyDiscoveredFluids);
         // And for newly discovered subtype variants (granular mode: individual enchantments/potions).
         DiscoveryState.get().addVariantListener(RecipeGate.INSTANCE::onNewlyDiscoveredVariants);
+
+        // Several toggles change what a held stack teaches (granularSubtypeDiscovery,
+        // discoverBaseContainer, discoverFluidsByBucket) or what should be visible. With discovery
+        // event-driven there is no periodic scan to notice, so re-observe and re-apply on reload.
+        modEventBus.addListener(ModConfigEvent.Reloading.class, event -> {
+            if (event.getConfig().getSpec() != Config.SPEC) {
+                return;
+            }
+            ClientDiscoveryHandler.sweepNow("config reload");
+            RecipeGate.INSTANCE.reapply();
+        });
 
         LOGGER.info("JEI Gated Discovery loaded (client-side).");
     }

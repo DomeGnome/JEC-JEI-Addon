@@ -29,8 +29,7 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue REVEAL_ALL;
     public static final ModConfigSpec.EnumValue<UnresolvedPolicy> UNRESOLVED_POLICY;
     public static final ModConfigSpec.EnumValue<DiscoveryScope> DISCOVERY_SCOPE;
-    public static final ModConfigSpec.IntValue SCAN_INTERVAL_TICKS;
-    public static final ModConfigSpec.BooleanValue DISCOVER_FLUIDS_BY_WADING;
+    public static final ModConfigSpec.IntValue SWEEP_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue DISCOVER_FLUIDS_BY_BUCKET;
     public static final ModConfigSpec.BooleanValue DISCOVER_BASE_CONTAINER;
     public static final ModConfigSpec.BooleanValue LOG_STATS;
@@ -82,17 +81,23 @@ public final class Config {
                          "GLOBAL: one discovery set shared across all worlds on this client.")
                 .defineEnum("discoveryScope", DiscoveryScope.PER_SAVE);
 
-        SCAN_INTERVAL_TICKS = b
-                .comment("How often (in client ticks, 20 = 1s) to scan the inventory for newly touched items.")
-                .defineInRange("scanIntervalTicks", 10, 1, 200);
-
-        DISCOVER_FLUIDS_BY_WADING = b
-                .comment("Discover a fluid by standing in / wading through it (e.g. step into water to learn water).")
-                .define("discoverFluidsByWading", true);
+        SWEEP_INTERVAL_TICKS = b
+                .comment("FALLBACK ONLY. Discovery is event-driven: items are observed as they enter your",
+                         "inventory, so there is normally no periodic scanning at all.",
+                         "If the mod detects that its hooks never fired (a NeoForge update or an",
+                         "incompatible mod suppressed them) it logs a warning and falls back to sweeping",
+                         "the inventory this often, in client ticks (20 = 1s). Set 0 to disable the",
+                         "fallback entirely and accept that discovery stops working in that case.")
+                .defineInRange("fallbackSweepIntervalTicks", 100, 0, 1200);
 
         DISCOVER_FLUIDS_BY_BUCKET = b
                 .comment("Discover a fluid by holding a bucket (or other fluid container) of it",
-                         "(e.g. a lava bucket in your inventory learns lava).")
+                         "(e.g. a lava bucket in your inventory learns lava).",
+                         "This is the ONLY way fluids are discovered. Wading through a fluid deliberately",
+                         "teaches nothing: handling a fluid is what demonstrates comprehension of it.",
+                         "Note that a modded fluid obtainable only inside machines, with no container item,",
+                         "can therefore never be discovered -- set hideUndiscoveredFluids = false if a pack",
+                         "you play has such fluids and you would rather see them all.")
                 .define("discoverFluidsByBucket", true);
 
         DISCOVER_BASE_CONTAINER = b
@@ -109,6 +114,41 @@ public final class Config {
 
         b.pop();
         SPEC = b.build();
+    }
+
+    /**
+     * Read a toggle that may be consulted before the config spec has loaded.
+     *
+     * <p>{@code ModConfigSpec.ConfigValue#get} throws {@code IllegalStateException} until the spec
+     * is loaded. In a running client that happens early enough not to matter, but two paths can run
+     * before it: unit tests (no FML config lifecycle at all), and anything reacting to a config
+     * event during startup. Those used to surface as a swallowed exception that silently skipped
+     * part of comprehension, which is worse than falling back to the documented default.
+     */
+    public static boolean orDefault(ModConfigSpec.BooleanValue value, boolean fallback) {
+        try {
+            return value.get();
+        } catch (IllegalStateException notLoadedYet) {
+            return fallback;
+        }
+    }
+
+    /** @see #orDefault(ModConfigSpec.BooleanValue, boolean) */
+    public static int orDefault(ModConfigSpec.IntValue value, int fallback) {
+        try {
+            return value.get();
+        } catch (IllegalStateException notLoadedYet) {
+            return fallback;
+        }
+    }
+
+    /** @see #orDefault(ModConfigSpec.BooleanValue, boolean) */
+    public static <T extends Enum<T>> T orDefault(ModConfigSpec.EnumValue<T> value, T fallback) {
+        try {
+            return value.get();
+        } catch (IllegalStateException notLoadedYet) {
+            return fallback;
+        }
     }
 
     private Config() {}

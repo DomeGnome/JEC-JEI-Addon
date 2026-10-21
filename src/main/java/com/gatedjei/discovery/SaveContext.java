@@ -12,7 +12,8 @@ public final class SaveContext {
 
     /** @return the storage key for the current world, honouring the GLOBAL/PER_SAVE config. */
     public static String currentKey() {
-        if (Config.DISCOVERY_SCOPE.get() == Config.DiscoveryScope.GLOBAL) {
+        if (Config.orDefault(Config.DISCOVERY_SCOPE, Config.DiscoveryScope.PER_SAVE)
+                == Config.DiscoveryScope.GLOBAL) {
             return "global";
         }
         return perSaveKey();

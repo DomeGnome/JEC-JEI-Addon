@@ -5,7 +5,9 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
   "client": [
-    "InventoryMixin"
+    "AbstractContainerMenuMixin",
+    "InventoryMixin",
+    "PlayerMixin"
   ],
   "injectors": {
     "defaultRequire": 0
