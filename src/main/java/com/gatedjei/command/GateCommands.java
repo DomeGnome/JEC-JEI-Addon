@@ -5,6 +5,7 @@ import com.gatedjei.GatedJei;
 import com.gatedjei.discovery.DiscoveryState;
 import com.gatedjei.discovery.DiscoveryStorage;
 import com.gatedjei.jei.RecipeGate;
+import com.gatedjei.notify.ComprehensionNotices;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
@@ -20,7 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Client-side debug commands: {@code /gatedjei <stats|reveal|reset|discoverall>}.
+ * Client-side debug commands:
+ * {@code /gatedjei <stats|reveal|reset|discoverheld|discoverall|notifytest>}.
  * These never touch the server; they only affect the local JEI view / discovery file.
  */
 @EventBusSubscriber(modid = GatedJei.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
@@ -49,6 +51,10 @@ public final class GateCommands {
                     return 1;
                 }))
                 .then(net.minecraft.commands.Commands.literal("reset").executes(ctx -> {
+                    // Wiping and re-deriving the whole set is bookkeeping, not discovery: stay quiet
+                    // through it. The re-sweep below only ENQUEUES, so the delta lands on a later
+                    // tick -- hence a timed window as well as the synchronous quiet block.
+                    ComprehensionNotices.feed().suppressForTicks(60);
                     DiscoveryState state = DiscoveryState.get();
                     String key = state.loadedKey();
                     state.replaceLoaded(key, new java.util.HashSet<>(), new java.util.HashSet<>(), new java.util.HashSet<>());
@@ -99,19 +105,67 @@ public final class GateCommands {
                     for (Item item : BuiltInRegistries.ITEM) {
                         everything.add(item);
                     }
-                    DiscoveryState.get().discoverAll(everything);
                     List<net.minecraft.world.level.material.Fluid> allFluids = new ArrayList<>();
                     for (net.minecraft.world.level.material.Fluid fluid : BuiltInRegistries.FLUID) {
                         allFluids.add(fluid);
                     }
-                    DiscoveryState.get().discoverAllFluids(allFluids);
-                    // Also force-comprehend what is held, so subtype VARIANTS of carried items
-                    // (specific enchantments / potions) are recorded too. Without this, granular
-                    // mode left every book and potion variant hidden after a discoverall, which
-                    // made the command useless for testing the unhide path it exists to test.
-                    com.gatedjei.discovery.ClientDiscoveryHandler.forcedSweepNow();
+                    // Comprehending the entire registry must not produce a notification; the command
+                    // already reports what it did.
+                    ComprehensionNotices.feed().suppressForTicks(60);
+                    ComprehensionNotices.runQuietly(() -> {
+                        DiscoveryState.get().discoverAll(everything);
+                        DiscoveryState.get().discoverAllFluids(allFluids);
+                        // Also force-comprehend what is held, so subtype VARIANTS of carried items
+                        // (specific enchantments / potions) are recorded too. Without this, granular
+                        // mode left every book and potion variant hidden after a discoverall, which
+                        // made the command useless for testing the unhide path it exists to test.
+                        com.gatedjei.discovery.ClientDiscoveryHandler.forcedSweepNow();
+                    });
                     say(ctx.getSource(), "Discovered all " + everything.size() + " items and "
                             + allFluids.size() + " fluids (plus variants of anything held).");
+                    return 1;
+                }))
+                .then(net.minecraft.commands.Commands.literal("compat").executes(ctx -> {
+                    // The only in-game way to tell whether a pickup-display integration is live.
+                    // "present(off)" means the mod is installed but its decoration is switched off;
+                    // "decorated" means we are marking its rows. It does NOT prove the mixin
+                    // applied -- that cannot be checked from here, only seen on a first-ever
+                    // pickup -- but it does separate "the mod is missing" from "the config says no",
+                    // which is the question people actually ask first.
+                    say(ctx.getSource(), "Pickup displays: " + com.gatedjei.compat.ExternalDisplay.summary());
+                    say(ctx.getSource(), com.gatedjei.compat.ExternalDisplay.supersedesOwnNotification()
+                            ? "Our own notification is live, but stands down per-item for anything a "
+                              + "decorated row already badged (ground pickups only -- crafting, chests, "
+                              + "trades and /give are still announced by us)."
+                            : "Our own notification announces every new comprehension.");
+                    return 1;
+                }))
+                .then(net.minecraft.commands.Commands.literal("notifytest").executes(ctx -> {
+                    // Puts the real notification on screen on demand, bypassing batching, the rate
+                    // limit and the master switch. Rendering cannot be verified offline, so there has
+                    // to be a way to look at it without waiting for a genuine discovery.
+                    Minecraft mc = Minecraft.getInstance();
+                    List<Item> sample = new ArrayList<>();
+                    if (mc.player != null) {
+                        for (net.minecraft.world.item.ItemStack stack : mc.player.getInventory().items) {
+                            if (stack != null && !stack.isEmpty() && !sample.contains(stack.getItem())) {
+                                sample.add(stack.getItem());
+                                if (sample.size() >= 3) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (sample.isEmpty()) {
+                        sample.add(net.minecraft.world.item.Items.DIAMOND);
+                    }
+                    boolean shown = ComprehensionNotices.presentNow(sample, sample.size());
+                    say(ctx.getSource(), shown
+                            ? "Test notice shown with " + sample.size() + " item(s), style "
+                                    + Config.orDefault(Config.NOTIFICATION_STYLE, Config.NotificationStyle.TOAST)
+                                    + ". notifyOnNewComprehension is "
+                                    + Config.orDefault(Config.NOTIFY_ON_NEW_COMPREHENSION, false) + "."
+                            : "Could not show a test notice (no client player).");
                     return 1;
                 }));
 

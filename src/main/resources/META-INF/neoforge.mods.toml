@@ -21,6 +21,26 @@ displayTest = "IGNORE_ALL_VERSION"
 [[mixins]]
 config = "${mod_id}.mixins.json"
 
+# Compat mixin configs, one per third-party pickup display. Kept separate from the config above
+# for three reasons: Mixin claims the package named in a config, so each needs its own package;
+# each carries its own IMixinConfigPlugin that switches the whole config off unless the mod it
+# targets is installed; and a problem in an optional cosmetic integration must not be able to
+# affect the mixins that discovery itself depends on.
+#
+# NeoForge 21.1 has no declarative gate here -- [[mixins]] accepts only "config" on this version
+# (verified: FML loader 4.0.34 contains no "requiredMods" string), which is why the gate is a
+# plugin rather than a line of TOML.
+#
+# Note the deliberate absence of matching [[dependencies]] entries. An "optional" dependency with
+# a version range REFUSES TO LOAD when the mod is present but outside the range, so declaring one
+# would turn a future release of a cosmetic integration into a game that will not start. Presence
+# is detected at runtime instead.
+[[mixins]]
+config = "${mod_id}.pickupnotifier.mixins.json"
+
+[[mixins]]
+config = "${mod_id}.lootjournal.mixins.json"
+
 # --- Dependencies ---
 
 [[dependencies.${mod_id}]]

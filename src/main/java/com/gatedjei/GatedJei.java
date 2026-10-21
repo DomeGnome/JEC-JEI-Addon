@@ -3,6 +3,7 @@ package com.gatedjei;
 import com.gatedjei.discovery.ClientDiscoveryHandler;
 import com.gatedjei.discovery.DiscoveryState;
 import com.gatedjei.jei.RecipeGate;
+import com.gatedjei.notify.ComprehensionNotices;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -43,6 +44,11 @@ public final class GatedJei {
         DiscoveryState.get().addFluidListener(RecipeGate.INSTANCE::onNewlyDiscoveredFluids);
         // And for newly discovered subtype variants (granular mode: individual enchantments/potions).
         DiscoveryState.get().addVariantListener(RecipeGate.INSTANCE::onNewlyDiscoveredVariants);
+
+        // Our own "you comprehended something new" notice. OFF by default: it is the fallback for
+        // players running no pickup-notification mod. Registered regardless so that turning the
+        // config on takes effect at once; a pure observer, it can never affect what gets discovered.
+        ComprehensionNotices.install();
 
         // Several toggles change what a held stack teaches (granularSubtypeDiscovery,
         // discoverBaseContainer, discoverFluidsByBucket) or what should be visible. With discovery

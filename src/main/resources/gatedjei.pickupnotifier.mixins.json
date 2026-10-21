@@ -1,0 +1,14 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.gatedjei.compat.mixin.pickupnotifier",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "com.gatedjei.compat.PickupNotifierMixinPlugin",
+  "mixins": [],
+  "client": [
+    "ItemDisplayEntryMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

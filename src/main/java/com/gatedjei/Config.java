@@ -20,6 +20,16 @@ public final class Config {
         HIDE
     }
 
+    /** How our own (fallback) "new comprehension" notice is drawn. */
+    public enum NotificationStyle {
+        /** A vanilla toast in the top-right corner: item icon, title, one line of text. */
+        TOAST,
+        /** A single line above the hotbar. Cheapest and quietest; no icon. */
+        ACTION_BAR,
+        /** A chat line, which stays in the log and can be scrolled back to. */
+        CHAT
+    }
+
     public static final ModConfigSpec SPEC;
 
     public static final ModConfigSpec.BooleanValue REQUIRE_OUTPUTS_DISCOVERED;
@@ -33,6 +43,21 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue DISCOVER_FLUIDS_BY_BUCKET;
     public static final ModConfigSpec.BooleanValue DISCOVER_BASE_CONTAINER;
     public static final ModConfigSpec.BooleanValue LOG_STATS;
+
+    public static final ModConfigSpec.BooleanValue DECORATE_EXTERNAL_PICKUP_DISPLAYS;
+    public static final ModConfigSpec.BooleanValue DECORATE_PICKUP_NOTIFIER;
+    public static final ModConfigSpec.BooleanValue DECORATE_LOOT_JOURNAL;
+    public static final ModConfigSpec.BooleanValue NOTIFY_ALONGSIDE_EXTERNAL_DISPLAYS;
+    public static final ModConfigSpec.ConfigValue<String> NOVELTY_GLYPH;
+    public static final ModConfigSpec.IntValue NOVELTY_COLOR;
+
+    public static final ModConfigSpec.BooleanValue NOTIFY_ON_NEW_COMPREHENSION;
+    public static final ModConfigSpec.EnumValue<NotificationStyle> NOTIFICATION_STYLE;
+    public static final ModConfigSpec.IntValue NOTIFICATION_COALESCE_TICKS;
+    public static final ModConfigSpec.IntValue NOTIFICATION_MIN_INTERVAL_TICKS;
+    public static final ModConfigSpec.IntValue NOTIFICATION_BULK_THRESHOLD;
+    public static final ModConfigSpec.IntValue NOTIFICATION_MAX_ICONS;
+    public static final ModConfigSpec.IntValue NOTIFICATION_JOIN_QUIET_TICKS;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -113,6 +138,108 @@ public final class Config {
                 .define("logStats", false);
 
         b.pop();
+        b.comment("Our own \"you comprehended something new\" notification.",
+                  "",
+                  "This is a FALLBACK. It is off by default and is meant for players who run no",
+                  "pickup-notification mod at all. If you have one installed, leave this off and let",
+                  "that mod mark new items instead.",
+                  "",
+                  "None of these settings can change WHAT gets discovered -- only whether you are told.")
+                .push("notifications");
+
+        NOTIFY_ON_NEW_COMPREHENSION = b
+                .comment("Master switch. If true, show a notice when you comprehend something you had never",
+                         "comprehended before. Ordinary pickups of items you already know show nothing.")
+                .define("notifyOnNewComprehension", false);
+
+        NOTIFICATION_STYLE = b
+                .comment("How the notice is drawn:",
+                         "  TOAST      - a vanilla toast top-right, with the item's icon. At most one of ours",
+                         "               exists at a time; a burst folds into it instead of queueing.",
+                         "  ACTION_BAR - one line above the hotbar. No icon, but never covers anything.",
+                         "  CHAT       - a chat line, so it stays in the log.")
+                .defineEnum("notificationStyle", NotificationStyle.TOAST);
+
+        NOTIFICATION_COALESCE_TICKS = b
+                .comment("Wait this many ticks (20 = 1s) of no new comprehension before showing the notice, so",
+                         "one burst becomes one notice. A stack landing across several slots, emptying a",
+                         "shulker box, and a cascade of unlocks all arrive as separate deltas.",
+                         "0 shows a notice the very next tick.")
+                .defineInRange("notificationCoalesceTicks", 20, 0, 200);
+
+        NOTIFICATION_MIN_INTERVAL_TICKS = b
+                .comment("Minimum gap between two notices, in ticks. Anything comprehended during the gap is",
+                         "held back and folded into the next notice rather than dropped. 0 disables the limit.")
+                .defineInRange("notificationMinIntervalTicks", 100, 0, 1200);
+
+        NOTIFICATION_BULK_THRESHOLD = b
+                .comment("A single notice covering this many items or more is treated as a sweep rather than",
+                         "news, and is dropped entirely -- '+1300 new items' tells you nothing. Reached by",
+                         "/gatedjei discoverall, by installing the mod into an established save, or by another",
+                         "mod filling your inventory in one go. Set 0 to always notify, however large.")
+                .defineInRange("notificationBulkThreshold", 32, 0, 4096);
+
+        NOTIFICATION_MAX_ICONS = b
+                .comment("How many item icons one notice cycles through. The count it reports is still exact.")
+                .defineInRange("notificationMaxIcons", 6, 1, 9);
+
+        NOTIFICATION_JOIN_QUIET_TICKS = b
+                .comment("Stay silent for this many ticks after joining a world. The join sweep re-derives",
+                         "discovery from an inventory you have been carrying all along, which is bookkeeping,",
+                         "not discovery. Set 0 to be told about the join sweep too.")
+                .defineInRange("notificationJoinQuietTicks", 100, 0, 1200);
+
+        b.pop();
+        b.comment("Integration with pick-up notification mods.",
+                  "",
+                  "These mods announce 'you picked up 3 dirt'. This mod knows something different and",
+                  "much rarer: 'this is the first dirt you have ever held'. Rather than add a second",
+                  "notification saying nearly the same thing, we mark THEIR row when the item is a",
+                  "first-ever sighting. All of this does nothing at all unless the mod in question is",
+                  "installed, and discovery itself never depends on any of it.").push("compat");
+
+        DECORATE_EXTERNAL_PICKUP_DISPLAYS = b
+                .comment("Master switch for all pick-up-display integrations. Set false to leave every",
+                         "supported mod's display exactly as it ships.")
+                .define("decorateExternalPickupDisplays", true);
+
+        DECORATE_PICKUP_NOTIFIER = b
+                .comment("Mark newly comprehended items in Pick Up Notifier's display (mod id 'pickupnotifier').",
+                         "On by default: the hook is one method on a class whose 1.21.1 build has not changed",
+                         "functionally since April 2025, and if it ever stops matching you lose the marker,",
+                         "not the game.",
+                         "Note that Pick Up Notifier only shows GROUND pickups, so a first-ever sighting that",
+                         "arrives by crafting, a chest, a trade or /give has no row there to mark.")
+                .define("decoratePickupNotifier", true);
+
+        DECORATE_LOOT_JOURNAL = b
+                .comment("Mark newly comprehended items in Loot Journal's display (mod id 'loot_journal').",
+                         "OFF by default, on purpose. Loot Journal has no API, and its maintainer has stated",
+                         "that the internals this has to use are not API, are not recommended, and will be",
+                         "removed in a planned Kotlin migration that will introduce a real API instead.",
+                         "Turning this on is fine today and will stop working at some announced point.")
+                .define("decorateLootJournal", false);
+
+        NOTIFY_ALONGSIDE_EXTERNAL_DISPLAYS = b
+                .comment("Whether OUR notification (see [notifications]) still fires when a supported pickup",
+                         "display is installed and being decorated.",
+                         "Default false: the same first-ever sighting is announced once, not twice. The other",
+                         "mod's row carries the marker and ours stays quiet. Set true if you want both.",
+                         "Has no effect unless you have also turned our notification on, which is off by default.")
+                .define("notifyAlongsideExternalDisplays", false);
+
+        NOVELTY_GLYPH = b
+                .comment("Prefixed to the item name in a decorated row. Set to an empty string for colour only.",
+                         "Must be a character your font has; the default is in Minecraft's default font.")
+                .define("noveltyGlyph", "\u2726");
+
+        NOVELTY_COLOR = b
+                .comment("Colour of the marker, as a decimal RGB value (0xRRGGBB written in decimal).",
+                         "Default 5636095 = 0x55FFFF, cyan: distinct from every vanilla rarity colour.",
+                         "The item's own name keeps its own colour if it specifies one, so rarity still reads.")
+                .defineInRange("noveltyColor", 0x55FFFF, 0x000000, 0xFFFFFF);
+
+        b.pop();
         SPEC = b.build();
     }
 
@@ -135,6 +262,21 @@ public final class Config {
 
     /** @see #orDefault(ModConfigSpec.BooleanValue, boolean) */
     public static int orDefault(ModConfigSpec.IntValue value, int fallback) {
+        try {
+            return value.get();
+        } catch (IllegalStateException notLoadedYet) {
+            return fallback;
+        }
+    }
+
+    /**
+     * @see #orDefault(ModConfigSpec.BooleanValue, boolean)
+     *
+     * <p>The catch-all for value types with no dedicated subclass (notably {@code String}). The more
+     * specific overloads above still win for the types they name, so existing call sites are
+     * unaffected.
+     */
+    public static <T> T orDefault(ModConfigSpec.ConfigValue<T> value, T fallback) {
         try {
             return value.get();
         } catch (IllegalStateException notLoadedYet) {

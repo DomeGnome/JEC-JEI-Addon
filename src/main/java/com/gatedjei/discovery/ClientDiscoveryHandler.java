@@ -74,6 +74,9 @@ public final class ClientDiscoveryHandler {
         DiscoveryHooks.queue().clear();
         DiscoveryHooks.resetLiveness();
 
+        // Novelty claims and the display marks they produced belong to the session that made them.
+        com.gatedjei.compat.PickupEntryDecorator.clear();
+
         ensureLoadedForCurrentSave();
 
         // Registries and capability registrations can differ per connection, so classify fresh.
@@ -93,6 +96,7 @@ public final class ClientDiscoveryHandler {
                     state.viewUnresolvedItemIds(), state.viewUnresolvedFluidIds());
         }
         DiscoveryHooks.queue().clear();
+        com.gatedjei.compat.PickupEntryDecorator.clear();
         state.unload();
     }
 
@@ -114,6 +118,10 @@ public final class ClientDiscoveryHandler {
         }
 
         drain(state);
+        // Advances the novelty-claim clock and expires stale claims. Must run every tick regardless
+        // of whether anything was observed, or a claim made just before an idle spell would outlive
+        // its window and suppress a later, genuine first sighting.
+        com.gatedjei.compat.PickupEntryDecorator.tick();
         checkLiveness();
 
         if (hooksDead) {

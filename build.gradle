@@ -145,3 +145,97 @@ tasks.named('compileJava', JavaCompile).configure {
         '-AMSG_TARGET_ELEMENT_NOT_FOUND=error',
     ]
 }
+
+// =====================================================================================
+// Offline verification for the third-party compat mixins.
+//
+// The Mixin annotation processor is this project's only offline proof that an @Inject
+// target exists -- and it cannot see the compat mixins at all, because a @Pseudo mixin
+// with a string `targets =` is invisible to it. Compiling against the real jars would
+// restore that, but it would make the primary build depend on a CurseForge/Modrinth
+// download for everyone, to type-check two cosmetic callbacks. Neither mod publishes an
+// API artifact to any Maven repository (checked: Fuzs's raw-GitHub Maven has no
+// pickupnotifier directory; Obscuria's has no loot_journal).
+//
+// So the check is opt-in instead, and reads the signatures straight out of a jar the
+// user already has:
+//
+//     ./gradlew verifyCompatTargets -PcompatJars=/path/PickUpNotifier-...jar,/path/loot_journal-...jar
+//
+// It uses javap from the JDK, so it needs no new dependency and no network. A class that
+// is in none of the supplied jars is SKIPPED, not failed -- the point is to check the
+// jars you have, not to demand all of them.
+// =====================================================================================
+
+ext.compatMixinTargets = [
+    [
+        modId    : 'pickupnotifier',
+        mixin    : 'com.gatedjei.compat.mixin.pickupnotifier.ItemDisplayEntryMixin',
+        className: 'fuzs.pickupnotifier.client.gui.entry.ItemDisplayEntry',
+        members  : [
+            ['<init>',       '(Lnet/minecraft/world/item/ItemStack;I)V'],
+            ['getEntryName', '()Lnet/minecraft/network/chat/Component;'],
+        ],
+    ],
+    [
+        modId    : 'loot_journal',
+        mixin    : 'com.gatedjei.compat.mixin.lootjournal.ItemPickupEventMixin',
+        className: 'dev.obscuria.lootjournal.client.events.ItemPickupEvent',
+        members  : [
+            ['<init>',      '(Lnet/minecraft/client/player/AbstractClientPlayer;Lnet/minecraft/world/item/ItemStack;)V'],
+            ['displayName', '()Lnet/minecraft/network/chat/Component;'],
+        ],
+    ],
+]
+
+tasks.register('verifyCompatTargets') {
+    group = 'verification'
+    description = 'Check the compat mixins\' targets against real mod jars (-PcompatJars=a.jar,b.jar).'
+    doLast {
+        def raw = (project.findProperty('compatJars') ?: '').toString()
+        def jars = raw.split(',').collect { it.trim() }.findAll { !it.isEmpty() }.collect { file(it) }
+        if (jars.isEmpty()) {
+            println 'verifyCompatTargets: no -PcompatJars given, nothing to check.'
+            println '  usage: ./gradlew verifyCompatTargets -PcompatJars=/path/to/PickUpNotifier-....jar'
+            return
+        }
+        def missing = jars.findAll { !it.isFile() }
+        if (!missing.isEmpty()) {
+            throw new GradleException("verifyCompatTargets: no such file(s): ${missing*.path}")
+        }
+        def classpath = jars*.absolutePath.join(File.pathSeparator)
+
+        def failures = []
+        def checked = 0
+        compatMixinTargets.each { target ->
+            def proc = new ProcessBuilder(['javap', '-p', '-s', '-cp', classpath, target.className])
+                    .redirectErrorStream(true).start()
+            def output = proc.inputStream.text
+            proc.waitFor()
+            if (proc.exitValue() != 0) {
+                println "verifyCompatTargets: ${target.className} is in none of the supplied jars -- skipped."
+                return
+            }
+            target.members.each { member ->
+                def (name, descriptor) = member
+                // javap prints a member's name on one line and "descriptor: ..." on the next. A
+                // constructor is printed under the class's own name, so for <init> the descriptor
+                // is the only thing to match on -- which is enough, since no two members of these
+                // classes share a descriptor.
+                def hasDescriptor = output.contains("descriptor: ${descriptor}")
+                def hasName = name == '<init>' || output.contains(name)
+                checked++
+                if (!hasDescriptor || !hasName) {
+                    failures << "  ${target.className}#${name}${descriptor}\n" +
+                                "    not found -- ${target.mixin} will no longer apply.\n" +
+                                "    (the mod has moved or renamed it; the integration degrades to no marker)"
+                }
+            }
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException("verifyCompatTargets: ${failures.size()} target(s) no longer match:\n"
+                    + failures.join('\n'))
+        }
+        println "verifyCompatTargets: ${checked} target member(s) verified against ${jars.size()} jar(s)."
+    }
+}

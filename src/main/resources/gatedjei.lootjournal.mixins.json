@@ -1,0 +1,14 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.gatedjei.compat.mixin.lootjournal",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "com.gatedjei.compat.LootJournalMixinPlugin",
+  "mixins": [],
+  "client": [
+    "ItemPickupEventMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}
