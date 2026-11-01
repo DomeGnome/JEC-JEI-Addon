@@ -1,7 +1,6 @@
 # Comprehension Mind Map
 
-Status: **concept recorded; library research done (build, don't pull); design mockup published.**
-Nothing about the look or behaviour is decided unless it says so.
+Status: **decisions made; exploring the gravity direction and further visual languages.**
 
 ## The idea, in the author's words
 
@@ -105,6 +104,49 @@ To be decided with mockups, not assumed:
    from every log). Which one is drawn?
 5. **Sections.** What plays the role of Pathologic's Acts — crafting depth, tiers, or categories?
 6. **The key.** Keep C despite the conflict, or choose another default?
+
+## Decisions
+
+Made by the author after trying the first mockup.
+
+| Question | Decision |
+|---|---|
+| Node style | **Ink** by default, **Parchment** as an option. (Glyph dropped: it needs a custom shader.) |
+| Key | **C**, accepting the conflict with creative hotbar saving. Rebindable. |
+| Good guesses | **Unnamed.** Working out what it is *is* the feature. |
+| Opens on | **Recently** — the latest comprehensions, front and centre. Everything when there is no history yet. |
+| Leads | **Only on focus**, folded into families ("fences ×11"). |
+| Sections | **Toggleable categories, not tiers**: where things are made (crafting table, furnace, stonecutter, smithing…) and what they are (tools, armor, building, redstone, food…). |
+| Node size | **How much it feeds.** Shared gaps grow, so coincidences stand out. |
+| Raw-material gaps | **Shown, dimmer.** |
+| Parts left | **Pips on the node**, and "3 of 4 parts" in the thought. |
+| Pause | **No.** Like Ponder: this is you thinking, and the world carries on around you. |
+
+## Direction: gravity
+
+In the author's words, the bottom-up tree "has less intuition" and "even with near, there are quickly lots
+of strings going everywhere". The direction they want instead:
+
+> By making it free form, the positioning of the icons would hint at there being something there, as we
+> would write a gravitational attraction between them basically. (Like how astronomers could detect planets
+> by gravitational pull.) Same idea, the piston for example, would be pulling iron and cobble and redstone
+> into itself, even if you haven't interacted with it.
+
+And for it to feel "all bubbly, like draggable, where I could move them around with the mouse and it would
+feel all squishy".
+
+What that means in the model:
+
+- **Uncomprehended items are invisible masses.** Each pulls on the known items it is made from, harder the
+  more of its recipe the player already knows. The player never sees the mass, only its effect.
+- **An invisible mass still takes up space,** so its ingredients cannot collapse into it: they gather in a
+  ring around an empty spot. The hole is the hint.
+- **When the item is comprehended, it appears in the hole** it was occupying all along.
+- **Fewer strings:** relationships are drawn for what the player is focused on; position carries the rest.
+- **Bubbly, draggable, squishy:** nodes can be grabbed and thrown, deform as they move, and are pulled
+  back into place.
+
+The layered "Thoughts" design is kept as an option, and two further visual languages are being explored.
 
 ## Research: pull a library, or build? — **build**
 
