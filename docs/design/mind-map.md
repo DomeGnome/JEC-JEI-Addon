@@ -1,7 +1,7 @@
 # Comprehension Mind Map
 
-Status: **concept recorded, research and design mockups in progress.** Nothing here is decided
-unless it says so.
+Status: **concept recorded; library research done (build, don't pull); design mockup published.**
+Nothing about the look or behaviour is decided unless it says so.
 
 ## The idea, in the author's words
 
@@ -105,6 +105,68 @@ To be decided with mockups, not assumed:
    from every log). Which one is drawn?
 5. **Sections.** What plays the role of Pathologic's Acts — crafting depth, tiers, or categories?
 6. **The key.** Keep C despite the conflict, or choose another default?
+
+## Research: pull a library, or build? — **build**
+
+Researched against primary sources (Maven metadata, mods.toml inside jars, decompiled 1.21.1 sources).
+
+**Rendering and interaction: vanilla `GuiGraphics`, no UI library.**
+- The only library with a real pan/zoom graph canvas, **LDLib2**, cannot load beside our JEI: it declares
+  JEI as an optional dependency at `>= 19.51.0.417`, and FML enforces optional-dependency version ranges
+  whenever that mod is present (verified in FML 4.0.34's `ModSorter`). We ship against JEI 19.21.1.312.
+  It is also an 8 MB LGPL mod.
+- **owo-lib** (MIT) is beta-only on NeoForge 1.21.1, a 1.2 MB mod every player would have to install,
+  and has no canvas. Everything else found is All Rights Reserved, non-commercial, very large, or has no API.
+- Everything needed has a vanilla precedent: the advancements screen's drag-pan, `pose().scale` for zoom,
+  `Screen.renderBlurredBackground`, and `Screen.setTooltipForNextRenderPass` for tooltips outside the zoom.
+
+**Layout: our own, in pure Java.**
+- **ELK** lays the crossbow graph out correctly, but is ~5.45 MB across 7 nested jars (~57× our jar), needs
+  an Xtext jar its own POM omits, ships signed jars, and its generic layering gets this domain wrong.
+- **JGraphT** has no layered layout; **jungrapht** has not released since 2023 and ignores pinned nodes.
+- All are batch algorithms; the per-frame settling and the "don't move what the player already knows"
+  behaviour would be ours to write either way.
+
+Estimated cost of building both: ~1,500–2,000 lines, ~30–60 KB of classes, no new dependencies.
+
+## Constraints established by research and the mockup
+
+- **Base materials have no recipe.** "Nothing produces it" is not enough: storage cycles (raw iron ⇄ raw iron
+  block, wheat ⇄ hay, slime, honey, smithing templates) need one root each treated as base. 182 base items.
+- **Ore smelting doesn't define a material.** Silk-touch ore recipes otherwise give coal, redstone and
+  diamond permanent, meaningless gaps.
+- **Recycling recipes lose.** "Smelt iron tools → nuggets" must not beat "ingot → nuggets".
+- **Rows:** `row = max(crafting tier, 1 + highest row among drawn inputs)`. Every edge points up, base
+  materials stay at the bottom, and rows rarely move as knowledge grows.
+- **Leads explode.** An early-game player has ~57 within reach; stick alone feeds ~94 recipes. Leads need
+  scoping and folding into families.
+- **No comprehension history exists yet.** Discovery is a plain set with no order or time, so "new", "older"
+  and "recently" need a persisted sequence. Existing saves will load with no history.
+- **Tags arrive flattened from remote servers.** "Any plank" must be recovered by matching item sets against
+  the client tag registry (64 of 71 vanilla tags match uniquely).
+- **JEI's index is not all "builds into".** Fuel, composting, anvil and tag-info entries must be filtered out by
+  category; JEI-only brewing and tipped-arrow recipes are real edges the vanilla JSON lacks.
+- **Never use `RenderType.lines()` in a GUI.** It targets the item-entity framebuffer under Fabulous graphics.
+  Draw edges and rings as triangles.
+- **White glyph icons need a custom shader.** The colour modulator can darken an item to a silhouette but
+  cannot whiten it.
+- **The C conflict is universal.** No conflict context clears it; while C opens the map, creative's
+  "C + number" hotbar saving stops working.
+
+## Design mockup
+
+An interactive mockup runs the real 1,258 vanilla recipes and textures against a simulated player:
+https://claude.ai/artifact/PWYjDSUUo3Xiqkpv5sTNfR — it is the decision gate for the open questions above.
+
+## Plan once decided
+
+1. Headless graph model (`com.gatedjei.map`, generic over the item type, tested in `src/pureTest`).
+2. Comprehension history: a per-save sequence, backward compatible with existing saves.
+3. Headless layout and per-frame settler.
+4. Screen shell, key, camera — verified by in-game screenshots (the game runs headless here).
+5. Geometry and node rendering in the chosen style.
+6. Interaction and scoping: focus, leads folding, sections, landing view.
+7. Motion, performance and polish.
 
 ## Related, parked
 
